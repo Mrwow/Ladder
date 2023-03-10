@@ -8,6 +8,6 @@ This is a software that allow users to label and detect their images recurrently
 
 
 ### Draw rectangle and add lables
-
+![add a new rectangels](./docImg/addbox.gif)
 
 ### save shapes and labels into a JSON file; reload the JSON file into the Ladder
