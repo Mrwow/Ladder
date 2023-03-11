@@ -1,5 +1,5 @@
 # Ladder
-This is a software that allow users to label and detect their images recurrently.
+This is a software that allow users to label and detect their images recurrently. Here are main functions in Ladder. 
 
 ### Prediction or detection
 
