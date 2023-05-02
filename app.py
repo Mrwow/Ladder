@@ -13,7 +13,7 @@ from __init__ import __appname__
 from widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,LabelListWidget,LabelListWidgetItem
 from actions import baseAction
-from detect import run
+from detect import run, jsonToYolo, train, imputeMissingBoxes
 
 LABEL_COLORMAP = imgviz.label_colormap()
 
@@ -118,12 +118,12 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.setContentsMargins(0,0,0,0)
         toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         toolbar.addWidget(btn_open_file)
-        toolbar.addWidget(btn_open_dir)
+        # toolbar.addWidget(btn_open_dir)
         toolbar.addWidget(btn_detect)
         toolbar.addWidget(btn_edit_shape)
         toolbar.addWidget(btn_draw_rect)
-        toolbar.addWidget(btn_next_img)
-        toolbar.addWidget(btn_pre_img)
+        # toolbar.addWidget(btn_next_img)
+        # toolbar.addWidget(btn_pre_img)
         toolbar.addWidget(btn_zoom_in)
         toolbar.addWidget(btn_zoom_out)
         toolbar.addWidget(btn_save_file)
@@ -155,8 +155,11 @@ class MainWindow(QtWidgets.QMainWindow):
             for fmt in QtGui.QImageReader.supportedImageFormats()
         ]
         filters = self.tr("Image & Label files (%s)") % " ".join(
-            formats + ["*%s" % ".json"]
+            formats
         )
+        # filters = self.tr("Image & Label files (%s)") % " ".join(
+        #     formats + ["*%s" % ".json"]
+        # )
         fileDialog = FileDialogPreview(self)
         fileDialog.setFileMode(FileDialogPreview.ExistingFile)
         fileDialog.setNameFilter(filters)
@@ -194,6 +197,7 @@ class MainWindow(QtWidgets.QMainWindow):
             flags = shape["flags"]
             group_id = shape["group_id"]
             other_data = shape["other_data"]
+            score = shape["score"]
 
             if not points:
                 # skip point-empty shape
@@ -203,6 +207,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 label=label,
                 shape_type=shape_type,
                 group_id=group_id,
+                score = score
             )
             for x, y in points:
                 shape.addPoint(QtCore.QPointF(x, y))
@@ -266,9 +271,17 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 print("please load image and detection model")
 
-    def yolov3(self,img,weight):
+    def yolov3(self,img,weight, add=False):
         # self.detect_shapes = run(source=img,weights=weight, imgsz=3000, save_txt=True)
-        self.detect_shapes = run(source=img,weights=weight, save_txt=True)
+        self.detect_shapes = run(source=img,weights=weight, save_txt=True, imgsz=3000,conf_thres=0.25,iou_thres=0.45)
+        print("++++++boxes 11111++++++")
+        print(len(self.detect_shapes))
+        print(self.detect_shapes[0])
+        if add:
+            self.detect_shapes = imputeMissingBoxes(img=img, shapes=self.detect_shapes)
+            print("++++++boxes 2222++++++")
+            print(len(self.detect_shapes))
+            print(self.detect_shapes)
         self.loadLabels(self.detect_shapes)
 
     def train(self, _value=False, dirpath=None):
@@ -292,6 +305,17 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
         print(targetDirPath)
+        if targetDirPath:
+            data_dict = jsonToYolo(targetDirPath)
+            train(data_dict,targetDirPath)
+            # train = os.path.join(targetDirPath,'train.py')
+            # data = os.path.join(targetDirPath,'data/rust_cv.yaml')
+            # weight = os.path.join(targetDirPath,"yolov3.pt")
+
+            # cmd = f"python3 {train} --img 640 --batch 4 --epochs 10 --data {data} --weights  {weight}"
+            # print(cmd)
+            # os.system(cmd)
+
 
 
 
@@ -434,6 +458,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     group_id=s.group_id,
                     shape_type=s.shape_type,
                     flags={},
+                    score = s.score
                 )
             )
             return data
