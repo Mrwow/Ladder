@@ -13,7 +13,7 @@ from __init__ import __appname__
 from widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,LabelListWidget,LabelListWidgetItem
 from actions import baseAction
-from detect import detect_run, jsonToYolo, train, imputeMissingBoxes
+#from detect import detect_run, jsonToYolo, train, imputeMissingBoxes
 
 # LABEL_COLORMAP = imgviz.label_colormap()
 LABEL_COLORMAP = [[0,0,0],
