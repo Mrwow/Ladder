@@ -1,0 +1,7 @@
+qtpy==2.3.1
+numpy==1.21.2
+matplotlib==3.4.3
+pillow==8.3.2
+torch==1.9.0
+tensorboard=2.11.0
+torchvision==0.9.0
