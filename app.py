@@ -4,7 +4,7 @@ import io
 import os
 import PIL.Image
 import math
-import imgviz
+# import imgviz
 
 from qtpy import QtWidgets, QtCore, QtGui
 from qtpy.QtCore import Qt
@@ -15,7 +15,13 @@ from widgets import Canvas, ZoomWidget, FileDialogPreview, \
 from actions import baseAction
 from detect import detect_run, jsonToYolo, train, imputeMissingBoxes
 
-LABEL_COLORMAP = imgviz.label_colormap()
+# LABEL_COLORMAP = imgviz.label_colormap()
+LABEL_COLORMAP = [[0,0,0],
+                  [128,0,0],
+                  [0,128,0],
+                  [128,128,0],
+                  [0,0,128]]
+
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -548,13 +554,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def _get_rgb_by_label(self, label):
         print("set color by label")
         item = self.uniqLabelList.findItemByLabel(label)
-        print(item)
+        # print(item)
         if item is None:
             item = self.uniqLabelList.createItemFromLabel(label)
             self.uniqLabelList.addItem(item)
             rgb = self._get_rgb_by_label(label)
             self.uniqLabelList.setItemLabel(item, label, rgb)
         label_id = self.uniqLabelList.indexFromItem(item).row() + 1
+        print(LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)])
+        print(len(LABEL_COLORMAP))
+        print(label_id)
         return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
 
     def labelSelectionChanged(self):
