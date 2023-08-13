@@ -13,7 +13,7 @@ from __init__ import __appname__
 from widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,LabelListWidget,LabelListWidgetItem
 from actions import baseAction
-from detect import run, jsonToYolo, train, imputeMissingBoxes
+from detect import detect_run, jsonToYolo, train, imputeMissingBoxes
 
 LABEL_COLORMAP = imgviz.label_colormap()
 
@@ -197,7 +197,6 @@ class MainWindow(QtWidgets.QMainWindow):
             flags = shape["flags"]
             group_id = shape["group_id"]
             other_data = shape["other_data"]
-            score = shape["score"]
 
             if not points:
                 # skip point-empty shape
@@ -207,7 +206,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 label=label,
                 shape_type=shape_type,
                 group_id=group_id,
-                score = score
             )
             for x, y in points:
                 shape.addPoint(QtCore.QPointF(x, y))
@@ -267,16 +265,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if fileDialog.exec_():
             self.detection_weight = fileDialog.selectedFiles()[0]
             if self.detection_weight and self.filename:
-                self.yolov3(self.filename,self.detection_weight)
+                self.yolov3(self.filename,self.detection_weight, add=False)
             else:
                 print("please load image and detection model")
 
-    def yolov3(self,img,weight, add=False):
+    def yolov3(self,img,weight, add=True):
         # self.detect_shapes = run(source=img,weights=weight, imgsz=3000, save_txt=True)
-        self.detect_shapes = run(source=img,weights=weight, save_txt=True, imgsz=3000,conf_thres=0.25,iou_thres=0.45)
+        self.detect_shapes = detect_run(source=img,weights=weight, save_txt=True, imgsz=2200,conf_thres=0.25,iou_thres=0.45)
         print("++++++boxes 11111++++++")
         print(len(self.detect_shapes))
-        print(self.detect_shapes[0])
         if add:
             self.detect_shapes = imputeMissingBoxes(img=img, shapes=self.detect_shapes)
             print("++++++boxes 2222++++++")
@@ -458,7 +455,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     group_id=s.group_id,
                     shape_type=s.shape_type,
                     flags={},
-                    score = s.score
                 )
             )
             return data
