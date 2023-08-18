@@ -204,9 +204,9 @@ def rotateTransform(img_url, dg=90):
     return  trans
 
 if __name__ == '__main__':
-    # img_url = '/Users/ZhouTang/Downloads/zzlab/1_Project/Wheat_rust_severity/source/result/yolov3_train_val/DJI_00026.JPG'
+    # img_url = '../Wheat_rust_severity/source/result/yolov3_train_val/DJI_00026.JPG'
     # index = 1
-    # out_dir = "/Users/ZhouTang/Downloads/zzlab/1_Project/Wheat_rust_severity/source/result/yolov3_train_val/"
+    # out_dir = "../Wheat_rust_severity/source/result/yolov3_train_val/"
     # transform_crop_rot = A.Compose([
         # A.CropAndPad(percent=(-0.5,0.1)),
         # A.RandomSizedBBoxSafeCrop(height=500,width=1000)
@@ -221,98 +221,6 @@ if __name__ == '__main__':
     # jsonBoxrotate(img_url,index=index,outdir=out_dir,transform=transform_crop_rot, transform_name=transform_name)
 
 
-    # random.seed(7)
-    # dir = "/Users/ZhouTang/Downloads/zzlab/1_Project/Wheat_rust_severity/source/result/yolov3_train_val/spillman_nursery_win/aug//afterMoreBoundaryBoxes/f2"
-    # crop square
-    # transform_crop_rot = A.Compose([
-    #     A.RandomCrop(width=3008, height=3008),
-    #     # A.HorizontalFlip(p=0.5),
-    #     A.Rotate(limit=[90,90],p=1)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform=transform_crop_rot,transform_name="crop3008_rot90")
-    #
-    # transform_crop = A.Compose([
-    #     A.RandomCrop(width=3008, height=3008),
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform = transform_crop, transform_name="crop3008")
-
-    # crop 3000:2000
-    # transform_crop_rot = A.Compose([
-    #     A.RandomCrop(width=3000, height=2000),
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform=transform_crop_rot,transform_name="crop3000x2000")
-
-    # directly rotate
-    # transform_rot = A.Compose([
-    #     A.PadIfNeeded(min_height=6000,min_width=6000,border_mode=cv2.BORDER_CONSTANT),
-    #     A.Rotate(limit=[-90,-90],p=1),
-    #     A.CenterCrop(height=5472,width=3648)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform = transform_rot, transform_name="rot-90")
-    #
-    # transform_rot = A.Compose([
-    #     A.PadIfNeeded(min_height=6000,min_width=6000,border_mode=cv2.BORDER_CONSTANT),
-    #     A.Rotate(limit=[90,90],p=1),
-    #     A.CenterCrop(height=5472,width=3648)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform = transform_rot, transform_name="rot90")
-
-    # cut half
-    # transform_rot = A.Compose([
-    #     A.Crop(x_min=100,y_min=100,x_max=3108,y_max=3108)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform = transform_rot, transform_name="half_1")
-    #
-    # transform_rot = A.Compose([
-    #     A.Crop(x_min=2400,y_min=100,x_max=5408,y_max=3108)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    # batchRotate(dir,transform = transform_rot, transform_name="half_2")
-
-    # central crop
-    # transform_rot = A.Compose([
-    #     A.CenterCrop(height=3008,width=3008)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    # batchRotate(dir,transform = transform_rot, transform_name="centerCrop")
-
-    # crop alfalfa
-    random.seed(21)
-    dir = "/Users/ZhouTang/Downloads/2023/2023_intern/source/ladder/ladder/data/test"
-    # centercrop
-    transform_ccrop = A.Compose([
-        A.CenterCrop(height=2200,width=2200)
-    ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    batchRotate(dir,transform = transform_ccrop, transform_name="centerCrop",num=1, dig=90)
-
-    # dir = "/Users/ZhouTang/Downloads/2023/2023_intern/source/ladder/ladder/data/train"
-    # dir1 = os.path.join(dir,"aug")
-    # dir2 = os.path.join(dir1,"aug")
-    #flip
-    # transform_hflip = A.Compose([
-    #     A.HorizontalFlip(p=1)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    # transform_vflip = A.Compose([
-    #     A.VerticalFlip(p=1)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    # transform_flip = A.Compose([
-    #     A.Flip(p=1)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    # batchRotate(dir,transform=transform_hflip,transform_name="hflip",num=1, dig=90)
-    # batchRotate(dir,transform=transform_vflip,transform_name="vflip",num=1, dig=90)
-    # batchRotate(dir,transform=transform_flip,transform_name="flip",num=1, dig=90)
-    # rotate
-    # batchRotate(dir1,transform='rotate',transform_name="rot90",num=1, dig=90)
-    # batchRotate(dir2,transform='rotate',transform_name="rot90",num=1, dig=90)
-    # batchRotate(dir1,transform='rotate',transform_name="rot-90",num=1, dig=-90)
-    # centercrop
-    # transform_ccrop = A.Compose([
-    #     A.CenterCrop(height=2200,width=2200)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    # batchRotate(dir1,transform = transform_ccrop, transform_name="centerCrop",num=1, dig=90)
-    # randomCrop
-    # transform_rcrop = A.Compose([
-    #     A.RandomCrop(width=2200, height=2200)
-    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    # batchRotate(dir1,transform = transform_rcrop, transform_name="randomCrop",num=5, dig=90)
 
 
 
