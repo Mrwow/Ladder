@@ -84,6 +84,33 @@ import random
 #     plt.imshow(img)
 #     plt.pause(50)
 
+
+def checkBox(bboxes, w, h):
+    new_boxes= []
+    for i, box in enumerate(bboxes):
+        x1 = box[0]
+        y1 = box[1]
+        x2 = box[2]
+        y2 = box[3]
+
+        new_box = []
+        # if (x1 in range(0,w)) and (x2 in range(0,w)) and (y1 in range(0,h)) and (y2 in range(0,h)):
+        if x1 == x2 or y1 == y2:
+            print(box)
+        elif x1 < x2 and y1 < y2:
+            new_box = box
+        elif x1 > x2 and y1 > y2:
+            print(box)
+            new_box = [x2,y2,x1,y1,box[4]]
+        elif x1 < x2 and y1 > y2:
+            print(box)
+            new_box = [x1,y2,x2,y1,box[4]]
+        elif x1 > x2 and y1 < y2:
+            print(box)
+            new_box = [x2,y1,x1,y2,box[4]]
+        new_boxes.append(new_box)
+    return new_boxes
+
 def jsonBoxrotate(img_url,index,outdir,transform, transform_name):
     dirname = os.path.dirname(img_url)
     img_name = os.path.basename(img_url).replace(".JPG","")
@@ -94,6 +121,10 @@ def jsonBoxrotate(img_url,index,outdir,transform, transform_name):
     img_out = out_json.replace("json", "JPG")
     out_json = os.path.join(outdir,out_json)
     img_out = os.path.join(outdir,img_out)
+
+    image = cv2.imread(img_url)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    w, h ,c =image.shape
 
     with open(in_json, "r") as f:
         data = json.load(f)
@@ -107,9 +138,8 @@ def jsonBoxrotate(img_url,index,outdir,transform, transform_name):
         ]
         for s in data["shapes"]
     ]
+    bboxes = checkBox(bboxes, w , h)
 
-    image = cv2.imread(img_url)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     transformed = transform(image=image, bboxes=bboxes)
     transformed_image = transformed['image']
     transformed_bboxes = transformed['bboxes']
@@ -137,15 +167,7 @@ def jsonBoxrotate(img_url,index,outdir,transform, transform_name):
     with open(out_json,'w') as outfile:
         json.dump(data, outfile)
 
-    # print(bboxes)
-    # print("++++++++++++++++")
-    # print(transformed_bboxes)
-    # visualize(
-    #     transformed['image'],
-    #     transformed['bboxes'],
-    # )
-
-def batchRotate(dir,transform, transform_name, num=1):
+def batchRotate(dir,transform, transform_name, num=1, dig=90):
     out_dir = os.path.join(dir,"aug")
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
@@ -155,7 +177,31 @@ def batchRotate(dir,transform, transform_name, num=1):
             img_url = os.path.join(dir, f)
             print(img_url)
             for i in range(num):
-                jsonBoxrotate(img_url,index=i,outdir=out_dir,transform=transform, transform_name=transform_name)
+                if transform == 'rotate':
+                    trans = rotateTransform(img_url, dg=dig)
+                    jsonBoxrotate(img_url,index=i,outdir=out_dir,transform=trans, transform_name=transform_name)
+                else:
+                    jsonBoxrotate(img_url,index=i,outdir=out_dir,transform=transform, transform_name=transform_name)
+
+
+def rotateTransform(img_url, dg=90):
+    image = cv2.imread(img_url)
+    w, h, c = image.shape
+    pad_val = max(w,h)
+    if dg == 90 or dg == -90:
+        trans = A.Compose([
+            A.PadIfNeeded(min_height=pad_val,min_width=pad_val,border_mode=cv2.BORDER_CONSTANT),
+            A.Rotate(limit=[dg,dg],p=1),
+            A.CenterCrop(height=h,width=w)
+        ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
+    elif dg == 0:
+        trans = A.Compose([
+            A.CenterCrop(height=w,width=h)
+        ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
+    else:
+        pass
+
+    return  trans
 
 if __name__ == '__main__':
     # img_url = '/Users/ZhouTang/Downloads/zzlab/1_Project/Wheat_rust_severity/source/result/yolov3_train_val/DJI_00026.JPG'
@@ -228,18 +274,47 @@ if __name__ == '__main__':
     # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
     # batchRotate(dir,transform = transform_rot, transform_name="centerCrop")
 
-
-
     # crop alfalfa
     random.seed(21)
-    dir = "/Users/ZhouTang/Downloads/zzlab/1_Project/Wheat_rust_severity/source/ob/ladder/ladder/data/test"
-    #crop square
-    transform_crop_square = A.Compose([
-        # A.RandomCrop(width=2200, height=2200),
-        # A.HorizontalFlip(p=0.5),
-        # A.Rotate(limit=[90,90],p=1)
+    dir = "/Users/ZhouTang/Downloads/2023/2023_intern/source/ladder/ladder/data/test"
+    # centercrop
+    transform_ccrop = A.Compose([
         A.CenterCrop(height=2200,width=2200)
-    ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.6))
-    batchRotate(dir,transform=transform_crop_square,transform_name="centerCrop2200",num=1)
+    ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    batchRotate(dir,transform = transform_ccrop, transform_name="centerCrop",num=1, dig=90)
+
+    # dir = "/Users/ZhouTang/Downloads/2023/2023_intern/source/ladder/ladder/data/train"
+    # dir1 = os.path.join(dir,"aug")
+    # dir2 = os.path.join(dir1,"aug")
+    #flip
+    # transform_hflip = A.Compose([
+    #     A.HorizontalFlip(p=1)
+    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    # transform_vflip = A.Compose([
+    #     A.VerticalFlip(p=1)
+    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    # transform_flip = A.Compose([
+    #     A.Flip(p=1)
+    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    # batchRotate(dir,transform=transform_hflip,transform_name="hflip",num=1, dig=90)
+    # batchRotate(dir,transform=transform_vflip,transform_name="vflip",num=1, dig=90)
+    # batchRotate(dir,transform=transform_flip,transform_name="flip",num=1, dig=90)
+    # rotate
+    # batchRotate(dir1,transform='rotate',transform_name="rot90",num=1, dig=90)
+    # batchRotate(dir2,transform='rotate',transform_name="rot90",num=1, dig=90)
+    # batchRotate(dir1,transform='rotate',transform_name="rot-90",num=1, dig=-90)
+    # centercrop
+    # transform_ccrop = A.Compose([
+    #     A.CenterCrop(height=2200,width=2200)
+    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    # batchRotate(dir1,transform = transform_ccrop, transform_name="centerCrop",num=1, dig=90)
+    # randomCrop
+    # transform_rcrop = A.Compose([
+    #     A.RandomCrop(width=2200, height=2200)
+    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    # batchRotate(dir1,transform = transform_rcrop, transform_name="randomCrop",num=5, dig=90)
+
+
+
 
 
