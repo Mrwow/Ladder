@@ -1,0 +1,14 @@
+numpy
+pandas
+tqdm
+qtpy!=1.11.2
+PyQt5!=5.15.3,!=5.15.4
+pyside2
+pillow
+opencv-python
+matplotlib
+imgviz>=0.11
+seaborn
+torch==1.9.0
+tensorboard
+torchvision==0.10.0

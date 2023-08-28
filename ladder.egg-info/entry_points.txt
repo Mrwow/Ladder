@@ -1,0 +1,3 @@
+[console_scripts]
+ladder = ladder.__main__:main
+
