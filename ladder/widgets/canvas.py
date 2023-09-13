@@ -37,7 +37,6 @@ class Canvas(QtWidgets.QWidget):
         self.hVertex = None
         self.hEdge = None
 
-
         self.prevMovePoint = QtCore.QPoint()
         self.selectedShapes = []
         self.prevPoint = QtCore.QPoint()
@@ -678,6 +677,25 @@ class Canvas(QtWidgets.QWidget):
 
         # return cropped image and H matrix
         return dst
+
+    def cropImage(self,img, pts):
+        print("start cropping")
+        (x1,y1) = pts[0]
+        (x2,y2) = pts[1]
+        (x3,y3) = pts[2]
+        (x4,y4) = pts[3]
+
+        x_min = min(x1,x2,x3,x4)
+        x_max = max(x1,x2,x3,x4)
+        y_min = min(y1,y2,y3,y4)
+        y_max = max(y1,y2,y3,y4)
+
+        print(x_min,x_max,y_min, y_max)
+        img_crop = img[int(y_min):int(y_max),int(x_min):int(x_max)]
+        return img_crop
+
+
+
 
 
 
