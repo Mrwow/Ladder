@@ -154,12 +154,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lastOpenDir = None
 
         self.settings = QtCore.QSettings("ladder", "ladder")
-        size = self.settings.value("window/size", QtCore.QSize(1200, 800))
+        self.window_size = (1200, 800)
+        size = self.settings.value("window/size", QtCore.QSize(self.window_size[0],self.window_size[1]))
         self.resize(size)
 
 
     def openFile(self, _value=False):
-        print("open file")
         if self.filename:
             path = os.path.dirname(str(self.filename))
         else:
@@ -187,7 +187,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.filename = fileDialog.selectedFiles()[0]
             if self.filename:
                 self.loadFile(self.filename)
-                print(self.canvas.shapes)
 
     def openDir(self):
         print("open dir")
@@ -255,10 +254,28 @@ class MainWindow(QtWidgets.QMainWindow):
         image = QtGui.QImage.fromData(self.imageData)
         self.canvas.pixmap = QtGui.QPixmap.fromImage(image)
         if self.labelFile:
-            print("%s label shapes"%(len(self.labelFile.shapes)))
             self.loadLabels(self.labelFile.shapes)
         self.canvas.setEnabled(True)
+        self.zoomValueInitial()
+        self.canvas.update()
 
+    def zoomValueInitial(self):
+        img_w, img_h = self.canvas.pixmap.width(), self.canvas.pixmap.height()
+        win_w = self.window_size[0]
+        win_h = self.window_size[1]
+        scale_init = min(win_w/img_w, win_h/img_h)
+        self.canvas.scale = scale_init
+        self.zoomWidget.setValue(int(100 * scale_init))
+
+    def zoomValue(self,increment=1.1):
+        zoom_value = self.zoomWidget.value() * increment
+        if increment > 1:
+            zoom_value = math.ceil(zoom_value)
+        else:
+            zoom_value = math.floor(zoom_value)
+        self.zoomWidget.setValue(zoom_value)
+        self.canvas.scale = 0.01 * self.zoomWidget.value()
+        self.canvas.adjustSize()
         self.canvas.update()
 
     def detect(self):
@@ -320,13 +337,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if targetDirPath:
             data_dict = jsonToYolo(targetDirPath)
             train(data_dict,targetDirPath)
-            # train = os.path.join(targetDirPath,'train.py')
-            # data = os.path.join(targetDirPath,'data/rust_cv.yaml')
-            # weight = os.path.join(targetDirPath,"yolov3.pt")
-
-            # cmd = f"python3 {train} --img 640 --batch 4 --epochs 10 --data {data} --weights  {weight}"
-            # print(cmd)
-            # os.system(cmd)
 
     def deletFile(self):
         yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
@@ -351,20 +361,6 @@ class MainWindow(QtWidgets.QMainWindow):
         print("draw")
         self.canvas.mode = self.canvas.CREATE
         return
-
-    def zoomValue(self,increment=1.1):
-        # print(self.filename)
-        # print(self.zoomWidget.value())
-        zoom_value = self.zoomWidget.value() * increment
-        if increment > 1:
-            zoom_value = math.ceil(zoom_value)
-        else:
-            zoom_value = math.floor(zoom_value)
-        self.zoomWidget.setValue(zoom_value)
-        # print(self.zoomWidget.value())
-        self.canvas.scale = 0.01 * self.zoomWidget.value()
-        self.canvas.adjustSize()
-        self.canvas.update()
 
     def nextImg(self):
         print("nextImg")
@@ -530,7 +526,6 @@ class MainWindow(QtWidgets.QMainWindow):
         shape.select_fill_color = QtGui.QColor(r, g, b, 155)
 
     def _get_rgb_by_label(self, label):
-        print("set color by label")
         item = self.uniqLabelList.findItemByLabel(label)
         # print(item)
         if item is None:
@@ -539,9 +534,6 @@ class MainWindow(QtWidgets.QMainWindow):
             rgb = self._get_rgb_by_label(label)
             self.uniqLabelList.setItemLabel(item, label, rgb)
         label_id = self.uniqLabelList.indexFromItem(item).row() + 1
-        print(LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)])
-        print(len(LABEL_COLORMAP))
-        print(label_id)
         return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
 
     def labelSelectionChanged(self):
@@ -562,9 +554,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return items[0]
         return None
 
-    # def labelItemChanged(self, item):
-    #     shape = item.shape()
-    #     self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
     def newShape(self):
         flags = {}
         group_id = None
@@ -606,7 +595,7 @@ class MainWindow(QtWidgets.QMainWindow):
             img_crop_name = img_name[0] + f"_crop_{int(pts[0][0])}_{int(pts[0][1])}_{int(pts[1][0])}_{int(pts[1][1])}." + img_name[1]
             img_crop_name = os.path.join(img_dir,img_crop_name)
             print(img_crop_name)
-            img_crop = self.canvas.rotateImg(img=img_old, pts=pts)
+            img_crop = self.canvas.cropImage(img=img_old, pts=pts)
             print(img_crop.shape)
             cv2.imwrite(img_crop_name,img_crop)
             self.filename = img_crop_name
