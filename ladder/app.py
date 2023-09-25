@@ -13,9 +13,12 @@ from qtpy.QtCore import Qt
 from .__init__ import __appname__
 from ladder.widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,\
-    LabelListWidget,LabelListWidgetItem, CropDialog
+    LabelListWidget,LabelListWidgetItem, CropDialog, TrainWidget, DetectWidget
 from ladder.actions import baseAction
-from ladder.detect import detect_run, jsonToYolo, train, imputeMissingBoxes
+from ladder.detect import detect_run, train
+from ladder.utils import jsonToYolo
+# from ladder.detect import detect_run, jsonToYolo, train, imputeMissingBoxes
+# from ladder.yolov8 import yolov8Train, yolov8Detect
 
 LABEL_COLORMAP = imgviz.label_colormap()
 # LABEL_COLORMAP = [[0,0,0],
@@ -47,7 +50,6 @@ class MainWindow(QtWidgets.QMainWindow):
         }
 
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
-        # self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.newShape.connect(self.newShape)
         self.canvas.labelUpdate.connect(self.labelUpdate)
         self.setCentralWidget(scrollAreaForCanvas)
@@ -68,8 +70,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.shape_dock.setObjectName("Labels")
         self.shape_dock.setWidget(self.labelList)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.shape_dock)
+        # train widget
+        self.trainWidget = TrainWidget()
+        self.train_dock = QtWidgets.QDockWidget(
+            self.tr("Training"), self
+        )
+        self.train_dock.setWidget(self.trainWidget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.train_dock)
+        # Detection widget
+        self.detectWidget = DetectWidget()
+        self.detect_dock = QtWidgets.QDockWidget(
+            self.tr("Detecting"), self
+        )
+        self.detect_dock.setWidget(self.detectWidget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.detect_dock)
 
-        # Top toolbar actions
+        # Top toolbar button actions
         action = functools.partial(baseAction, self)
         open_file = action("&Open",'openFile',self.openFile)
         btn_open_file = QtWidgets.QToolButton()
@@ -172,9 +188,7 @@ class MainWindow(QtWidgets.QMainWindow):
         filters = self.tr("Image & Label files (%s)") % " ".join(
             formats
         )
-        # filters = self.tr("Image & Label files (%s)") % " ".join(
-        #     formats + ["*%s" % ".json"]
-        # )
+
         fileDialog = FileDialogPreview(self)
         fileDialog.setFileMode(FileDialogPreview.ExistingFile)
         fileDialog.setNameFilter(filters)
@@ -233,7 +247,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.setEnabled(False)
         filename = str(filename)
         label_file = os.path.splitext(filename)[0] + ".json"
-        print(label_file)
         if self.output_dir:
             label_file_without_path = os.path.basename(label_file)
             label_file = os.path.join(self.output_dir, label_file_without_path)
@@ -262,10 +275,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def zoomValueInitial(self):
         img_w, img_h = self.canvas.pixmap.width(), self.canvas.pixmap.height()
         win_w = self.window_size[0]
-        win_h = self.window_size[1]
+        win_h = self.window_size[1] - 200
         scale_init = min(win_w/img_w, win_h/img_h)
-        self.canvas.scale = scale_init
-        self.zoomWidget.setValue(int(100 * scale_init))
+        self.canvas.scale = scale_init * 0.8
+        self.zoomWidget.setValue(int(100 * scale_init * 0.8))
 
     def zoomValue(self,increment=1.1):
         zoom_value = self.zoomWidget.value() * increment
@@ -300,18 +313,65 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.yolov3(self.filename,self.detection_weight, add=False)
             else:
                 print("please load image and detection model")
-
-    def yolov3(self,img,weight, add=True):
-        # self.detect_shapes = run(source=img,weights=weight, imgsz=3000, save_txt=True)
-        self.detect_shapes = detect_run(source=img,weights=weight, save_txt=True, imgsz=1100,conf_thres=0.5,iou_thres=0.6)
-        print("++++++boxes 11111++++++")
-        print(len(self.detect_shapes))
-        if add:
-            self.detect_shapes = imputeMissingBoxes(img=img, shapes=self.detect_shapes)
-            print("++++++boxes 2222++++++")
-            print(len(self.detect_shapes))
-            print(self.detect_shapes)
-        self.loadLabels(self.detect_shapes)
+    #
+    # def detectYolov3(self):
+    #     print("load model and detect")
+    #     if self.filename:
+    #         path = os.path.dirname(str(self.filename))
+    #     else:
+    #         path = "."
+    #
+    #     filter = "yolov3 model weight (*.pt)"
+    #     fileDialog = FileDialogPreview(self)
+    #     fileDialog.setFileMode(FileDialogPreview.ExistingFile)
+    #     fileDialog.setNameFilter(filter)
+    #     fileDialog.setWindowTitle(
+    #         self.tr("%s - Choose Detection Model Weight") % __appname__,
+    #         )
+    #     fileDialog.setWindowFilePath(path)
+    #     fileDialog.setViewMode(FileDialogPreview.Detail)
+    #     if fileDialog.exec_():
+    #         self.detection_weight = fileDialog.selectedFiles()[0]
+    #         if self.detection_weight and self.filename:
+    #             self.yolov3(self.filename,self.detection_weight, add=False)
+    #         else:
+    #             print("please load image and detection model")
+    # def yolov3(self,img,weight, add=True):
+    #     # self.detect_shapes = run(source=img,weights=weight, imgsz=3000, save_txt=True)
+    #     self.detect_shapes = detect_run(source=img,weights=weight, save_txt=True, imgsz=1100,conf_thres=0.5,iou_thres=0.6)
+    #     print("++++++boxes 11111++++++")
+    #     print(len(self.detect_shapes))
+    #     if add:
+    #         # self.detect_shapes = imputeMissingBoxes(img=img, shapes=self.detect_shapes)
+    #         print("++++++boxes 2222++++++")
+    #         print(len(self.detect_shapes))
+    #         print(self.detect_shapes)
+    #     self.loadLabels(self.detect_shapes)
+    #
+    # def trainYolov3(self, _value=False, dirpath=None):
+    #     print("select image data to re-train yolov3")
+    #     defaultOpenDirPath = dirpath if dirpath else "."
+    #     if self.lastOpenDir and os.path.exists(self.lastOpenDir):
+    #         defaultOpenDirPath = self.lastOpenDir
+    #     else:
+    #         defaultOpenDirPath = (
+    #             os.path.dirname(self.filename) if self.filename else "."
+    #         )
+    #
+    #     targetDirPath = str(
+    #         QtWidgets.QFileDialog.getExistingDirectory(
+    #             self,
+    #             self.tr("%s - Open Directory") % __appname__,
+    #             defaultOpenDirPath,
+    #             QtWidgets.QFileDialog.ShowDirsOnly
+    #             | QtWidgets.QFileDialog.DontResolveSymlinks,
+    #             )
+    #     )
+    #
+    #     print(targetDirPath)
+    #     if targetDirPath:
+    #         data_dict = jsonToYolo(targetDirPath)
+    #         train(data_dict,targetDirPath)
 
     def train(self, _value=False, dirpath=None):
         print("select image data to re-train yolov3")
@@ -465,7 +525,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         shapes = [format_shape(item) for item in self.canvas.shapes]
         flags = {}
-        print(shapes)
         try:
             print("%s label shapes"%(len(self.canvas.shapes)))
             print(self.imagePath)
@@ -587,17 +646,7 @@ class MainWindow(QtWidgets.QMainWindow):
         msg = self.cropDialog.popUp()
         if msg:
             print(self.filename)
-            pts=self.canvas.cropPoints
-            img_old = cv2.imread(self.filename)
-            print(img_old.shape)
-            img_dir = os.path.dirname(str(self.filename))
-            img_name = os.path.basename(str(self.filename)).split('.')
-            img_crop_name = img_name[0] + f"_crop_{int(pts[0][0])}_{int(pts[0][1])}_{int(pts[1][0])}_{int(pts[1][1])}." + img_name[1]
-            img_crop_name = os.path.join(img_dir,img_crop_name)
-            print(img_crop_name)
-            img_crop = self.canvas.cropImage(img=img_old, pts=pts)
-            print(img_crop.shape)
-            cv2.imwrite(img_crop_name,img_crop)
+            img_crop_name = self.canvas.cropImage(img_url=self.filename, pts=self.canvas.cropPoints)
             self.filename = img_crop_name
             if self.filename:
                 self.loadFile(self.filename)
