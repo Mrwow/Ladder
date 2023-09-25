@@ -6,6 +6,8 @@ from .shape import Shape, distance
 
 import numpy as np
 import cv2
+from ladder.utils import cropJson
+import os
 
 CURSOR_MOVE = QtCore.Qt.ClosedHandCursor
 CURSOR_POINT = QtCore.Qt.PointingHandCursor
@@ -462,52 +464,53 @@ class Canvas(QtWidgets.QWidget):
             return
 
         # hovering over to highlight
-        for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
-            index = shape.nearestVertex(pos, self.epsilon / self.scale)
-            index_edge = shape.nearestEdge(pos, self.epsilon / self.scale)
-            if index is not None:
-                if self.selectedVertex():
-                    self.hShape.highlightClear()
-                self.prevhVertex = self.hVertex = index
-                self.prevhShape = self.hShape = shape
-                self.prevhEdge = self.hEdge
-                self.hEdge = None
-                shape.highlightVertex(index, shape.MOVE_VERTEX)
-                self.overrideCursor(CURSOR_POINT)
-                self.setToolTip(self.tr("Click & drag to move point"))
-                self.setStatusTip(self.toolTip())
-                self.update()
-                break
-            elif index_edge is not None and shape.canAddPoint():
-                if self.selectedVertex():
-                    self.hShape.highlightClear()
-                self.prevhVertex = self.hVertex
-                self.hVertex = None
-                self.prevhShape = self.hShape = shape
-                self.prevhEdge = self.hEdge = index_edge
-                self.overrideCursor(CURSOR_POINT)
-                self.setToolTip(self.tr("Click to create point"))
-                self.setStatusTip(self.toolTip())
-                self.update()
-                break
-            elif shape.containsPoint(pos):
-                if self.selectedVertex():
-                    self.hShape.highlightClear()
-                self.prevhVertex = self.hVertex
-                self.hVertex = None
-                self.prevhShape = self.hShape = shape
-                self.prevhEdge = self.hEdge
-                self.hEdge = None
-                self.setToolTip(
-                    self.tr("Click & drag to move shape '%s'") % shape.label
-                )
-                self.setStatusTip(self.toolTip())
-                self.overrideCursor(CURSOR_GRAB)
-                self.update()
-                break
-        else:  # Nothing found, clear highlights, reset state.
-            self.unHighlight()
-        self.vertexSelected.emit(self.hVertex is not None)
+        if self.editing():
+            for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
+                index = shape.nearestVertex(pos, self.epsilon / self.scale)
+                index_edge = shape.nearestEdge(pos, self.epsilon / self.scale)
+                if index is not None:
+                    if self.selectedVertex():
+                        self.hShape.highlightClear()
+                    self.prevhVertex = self.hVertex = index
+                    self.prevhShape = self.hShape = shape
+                    self.prevhEdge = self.hEdge
+                    self.hEdge = None
+                    shape.highlightVertex(index, shape.MOVE_VERTEX)
+                    self.overrideCursor(CURSOR_POINT)
+                    self.setToolTip(self.tr("Click & drag to move point"))
+                    self.setStatusTip(self.toolTip())
+                    self.update()
+                    break
+                elif index_edge is not None and shape.canAddPoint():
+                    if self.selectedVertex():
+                        self.hShape.highlightClear()
+                    self.prevhVertex = self.hVertex
+                    self.hVertex = None
+                    self.prevhShape = self.hShape = shape
+                    self.prevhEdge = self.hEdge = index_edge
+                    self.overrideCursor(CURSOR_POINT)
+                    self.setToolTip(self.tr("Click to create point"))
+                    self.setStatusTip(self.toolTip())
+                    self.update()
+                    break
+                elif shape.containsPoint(pos):
+                    if self.selectedVertex():
+                        self.hShape.highlightClear()
+                    self.prevhVertex = self.hVertex
+                    self.hVertex = None
+                    self.prevhShape = self.hShape = shape
+                    self.prevhEdge = self.hEdge
+                    self.hEdge = None
+                    self.setToolTip(
+                        self.tr("Click & drag to move shape '%s'") % shape.label
+                    )
+                    self.setStatusTip(self.toolTip())
+                    self.overrideCursor(CURSOR_GRAB)
+                    self.update()
+                    break
+            else:  # Nothing found, clear highlights, reset state.
+                self.unHighlight()
+            self.vertexSelected.emit(self.hVertex is not None)
 
 
     def mousePressEvent(self, event):
@@ -678,21 +681,34 @@ class Canvas(QtWidgets.QWidget):
         # return cropped image and H matrix
         return dst
 
-    def cropImage(self,img, pts):
+    def cropImage(self,img_url, pts):
         print("start cropping")
+        img = cv2.imread(img_url)
         (x1,y1) = pts[0]
         (x2,y2) = pts[1]
         (x3,y3) = pts[2]
         (x4,y4) = pts[3]
 
-        x_min = min(x1,x2,x3,x4)
-        x_max = max(x1,x2,x3,x4)
-        y_min = min(y1,y2,y3,y4)
-        y_max = max(y1,y2,y3,y4)
+        x_min = int(min(x1,x2,x3,x4))
+        x_max = int(max(x1,x2,x3,x4))
+        y_min = int(min(y1,y2,y3,y4))
+        y_max = int(max(y1,y2,y3,y4))
 
-        print(x_min,x_max,y_min, y_max)
-        img_crop = img[int(y_min):int(y_max),int(x_min):int(x_max)]
-        return img_crop
+        img_crop = img[y_min:y_max,x_min:x_max]
+        img_dir = os.path.dirname(str(img_url))
+        img_name = os.path.basename(str(img_url)).split('.')
+        img_crop_name = img_name[0] + f"_{x_min}_{y_min}_{x_max}_{y_max}." + img_name[1]
+        img_crop_name = os.path.join(img_dir,img_crop_name)
+        cv2.imwrite(img_crop_name,img_crop)
+
+        json = img_url.split(".")[0] + ".json"
+        if os.path.isfile(json):
+            cropJson(img_url=img_url, json_url=json, pts=[x_min, y_min, x_max, y_max])
+
+        return img_crop_name
+
+
+
 
 
 

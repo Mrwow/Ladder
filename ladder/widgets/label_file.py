@@ -8,6 +8,33 @@ import contextlib
 import numpy as np
 PIL.Image.MAX_IMAGE_PIXELS = None
 
+def checkValidBoxWithinImage(shapes, w, h):
+    for shape in shapes:
+        points = shape["points"]
+        x1, y1 = points[0][0], points[0][1]
+        x2, y2 = points[1][0], points[1][1]
+        x1 = max(0,x1)
+        y1 = max(0,y1)
+        x2 = min(x2, w)
+        y2 = min(y2, h)
+        box = [[x1,y1],[x2,y2]]
+
+        new_box = []
+        if x1 == x2 or y1 == y2:
+            pass
+        elif x1 < x2 and y1 < y2:
+            new_box = box
+        elif x1 > x2 and y1 > y2:
+            new_box = [x2,y2,x1,y1]
+        elif x1 < x2 and y1 > y2:
+            new_box = [x1,y2,x2,y1]
+        elif x1 > x2 and y1 < y2:
+            new_box = [x2,y1,x1,y2]
+
+        shape["points"]=new_box
+
+    return shapes
+
 def img_b64_to_arr(img_b64):
     img_data = base64.b64decode(img_b64)
     img_arr = img_data_to_arr(img_data)
@@ -125,6 +152,7 @@ class LabelFile(object):
             otherData = {}
         if flags is None:
             flags = {}
+        shapes = checkValidBoxWithinImage(shapes,w=imageWidth, h=imageHeight)
         data = dict(
             version="5.0.2",
             flags=flags,
