@@ -1,6 +1,10 @@
+import os
 from qtpy import QtWidgets, QtGui
 from ultralytics import YOLO
-import os
+from sahi import AutoDetectionModel
+from sahi.predict import get_prediction, get_sliced_prediction, predict
+from ladder.utils import coco2json
+
 
 class TrainWidget(QtWidgets.QWidget):
 
@@ -14,9 +18,9 @@ class TrainWidget(QtWidgets.QWidget):
         ])
 
         self.imgSize = QtWidgets.QLineEdit()
-        self.imgSize.setPlaceholderText("Enter image size:640")
+        self.imgSize.setPlaceholderText("Enter like: 640")
         self.epoch = QtWidgets.QLineEdit()
-        self.epoch.setPlaceholderText("Enter epoch:100")
+        self.epoch.setPlaceholderText("Enter like: 100")
         self.trainBtn = QtWidgets.QPushButton()
         self.trainBtn.setText("Start training")
         # self.trainBtn.setIcon(QtGui.QIcon("../icons/train.png"))
@@ -38,8 +42,10 @@ class TrainWidget(QtWidgets.QWidget):
         layout.addWidget(weightDialog,2,1)
         layout.addWidget(self.weight_list,3,0,1,2)
         layout.addWidget(self.modelSelectBox, 4,0,1,2)
-        layout.addWidget(self.epoch,5,0,1,2)
-        layout.addWidget(self.imgSize,6,0,1,2)
+        layout.addWidget(QtWidgets.QLabel('Epoch number:'),5,0)
+        layout.addWidget(self.epoch,5,1)
+        layout.addWidget(QtWidgets.QLabel('Image size:'),6,0)
+        layout.addWidget(self.imgSize,6,1,)
         layout.addWidget(self.trainBtn,7,0,1,2)
         self.setLayout(layout)
 
@@ -101,13 +107,13 @@ class DetectWidget(QtWidgets.QWidget):
             'yolov8n(3.2M)','yolov8s(11.2M)' ,'yolov8m(25.9M)', 'yolov8l(43.7M)','yolov8x(68.2M)'
         ])
         self.imgSize = QtWidgets.QLineEdit()
-        self.imgSize.setPlaceholderText("Enter image size:640")
+        self.imgSize.setPlaceholderText("Enter like: 640")
         self.iou = QtWidgets.QLineEdit()
-        self.iou.setPlaceholderText("Enter IOU threshold:0.6")
+        self.iou.setPlaceholderText("Enter like: 0.6")
         self.conf = QtWidgets.QLineEdit()
-        self.conf.setPlaceholderText("Enter confidence threshold:0.25")
+        self.conf.setPlaceholderText("Enter like: 0.25")
         self.overlap = QtWidgets.QLineEdit()
-        self.overlap.setPlaceholderText("Enter overlap:0.25")
+        self.overlap.setPlaceholderText("Enter like: 0.25")
 
         self.detectBtn = QtWidgets.QPushButton()
         self.detectBtn.setText("Start Detecting")
@@ -128,44 +134,82 @@ class DetectWidget(QtWidgets.QWidget):
         layout.addWidget(weightDialog,2,1)
         layout.addWidget(self.weight_list,3,0,1,2)
         layout.addWidget(self.modelSelectBox, 4,0,1,2)
-        layout.addWidget(self.iou,5,0,1,2)
-        layout.addWidget(self.conf,6,0,1,2)
-        layout.addWidget(self.imgSize,7,0,1,2)
-        layout.addWidget(self.overlap,8,0,1,2)
+        layout.addWidget(QtWidgets.QLabel('IoU:'),5,0)
+        layout.addWidget(self.iou,5,1)
+        layout.addWidget(QtWidgets.QLabel('Confidence:'),6,0)
+        layout.addWidget(self.conf,6,1)
+        layout.addWidget(QtWidgets.QLabel('Image size:'),7,0)
+        layout.addWidget(self.imgSize,7,1)
+        layout.addWidget(QtWidgets.QLabel('Overlap:'),8,0)
+        layout.addWidget(self.overlap,8,1)
         layout.addWidget(self.detectBtn,9,0,1,2)
         self.setLayout(layout)
 
-    def get_para(self):
-        print(self.imgSize.text())
-
-    def yolov8Detect(self, model):
-        # predict
-        model  = YOLO('./runs/detect/train/weights/best.pt')
-        source = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/test/data/wheat_seed/test"
-        results = model.predict(source, save=True, save_conf=True, save_txt=True,
-                                imgsz=640, conf=0.1, iou=0.6, )
+        self.path = "."
 
     def open_file_dialog(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
-            "Select Files",
-            "/home",
-            "Image (*.png *.jpg)"
-
+            "Select Files or folder",
+            self.path,
+            "Image (*.png *.jpg *.jpeg)"
         )
         if filenames:
             for file in filenames:
-                dir_path = os.path.dirname(file)
+                dir_path = file
                 self.file_list.setText(str(dir_path))
+                self.path = os.path.dirname(file)
 
     def open_weight_dialog(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
             "Select Files",
-            "/home",
+            self.path,
             "weight (*.pt *.pyt)"
 
         )
         if filenames:
             for file in filenames:
                 self.weight_list.setText(str(file))
+
+    def get_para(self):
+        print(self.imgSize.text())
+        print(self.modelSelectBox.currentText())
+        conf = float(self.conf.text())
+        iou = float(self.iou.text())
+        imgsz = int(self.imgSize.text())
+        model = self.modelSelectBox.currentText()
+        data = self.file_list.text()
+        weight = self.weight_list.text()
+        results = self.yolov8Detect(model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou)
+
+    def yolov8Detect(self, model, data, weight, imgsz, conf, iou):
+        # predict
+        if not weight:
+            weight = model.split(",")[0] + ".pt"
+            model = YOLO(weight)
+        else:
+            model = YOLO(weight)
+
+        results = model.predict(data, save=True, save_conf=True, save_txt=True,
+                                imgsz=imgsz, conf=conf, iou=iou)
+        return results
+
+    def sliceDetect(self):
+        detection_model = AutoDetectionModel.from_pretrained(
+            model_type='yolov8',
+            model_path=self.weight_list.text(),
+            confidence_threshold=int(self.conf.text()),
+            device="cpu", # or 'cuda:0'
+        )
+        result = get_sliced_prediction(
+            self.file_list.text(),
+            detection_model,
+            slice_height = int(self.imgSize.text()),
+            slice_width = int(self.imgSize.text()),
+            overlap_height_ratio = int(self.overlap.text()),
+            overlap_width_ratio = int(self.overlap.text())
+        )
+        result.export_visuals(export_dir=dir)
+        # coco = result.to_coco_annotations()
+        # coco2json(coco,img_url=img_url)
