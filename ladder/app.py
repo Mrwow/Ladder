@@ -15,10 +15,9 @@ from ladder.widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,\
     LabelListWidget,LabelListWidgetItem, CropDialog, TrainWidget, DetectWidget
 from ladder.actions import baseAction
-from ladder.detect import detect_run, train
 from ladder.utils import jsonToYolo
+# from ladder.detect import detect_run, train
 # from ladder.detect import detect_run, jsonToYolo, train, imputeMissingBoxes
-# from ladder.yolov8 import yolov8Train, yolov8Detect
 
 LABEL_COLORMAP = imgviz.label_colormap()
 # LABEL_COLORMAP = [[0,0,0],
@@ -95,9 +94,9 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_open_dir = QtWidgets.QToolButton()
         btn_open_dir.setDefaultAction(open_dir)
 
-        detect = action("&Detect",'detect', self.detect)
-        btn_detect = QtWidgets.QToolButton()
-        btn_detect.setDefaultAction(detect)
+        # detect = action("&Detect",'detect', self.detect)
+        # btn_detect = QtWidgets.QToolButton()
+        # btn_detect.setDefaultAction(detect)
 
         next_img = action("&Next image",'next', self.nextImg)
         btn_next_img = QtWidgets.QToolButton()
@@ -135,9 +134,9 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_del_shape = QtWidgets.QToolButton()
         btn_del_shape.setDefaultAction(del_shape)
 
-        train = action("&Train", "train", self.train)
+        train_file = action("&Train", "train", self.train_file_transfer)
         btn_train = QtWidgets.QToolButton()
-        btn_train.setDefaultAction(train)
+        btn_train.setDefaultAction(train_file)
 
         # Top toolbar
         toolbar = QtWidgets.QToolBar()
@@ -148,7 +147,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.addWidget(btn_open_file)
         toolbar.addWidget(btn_crop_img)
         # toolbar.addWidget(btn_open_dir)
-        toolbar.addWidget(btn_detect)
+        # toolbar.addWidget(btn_detect)
         toolbar.addWidget(btn_zoom_in)
         toolbar.addWidget(btn_zoom_out)
         toolbar.addWidget(btn_edit_shape)
@@ -291,28 +290,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.adjustSize()
         self.canvas.update()
 
-    def detect(self):
-        print("load model and detect")
-        if self.filename:
-            path = os.path.dirname(str(self.filename))
-        else:
-            path = "."
-
-        filter = "yolov3 model weight (*.pt)"
-        fileDialog = FileDialogPreview(self)
-        fileDialog.setFileMode(FileDialogPreview.ExistingFile)
-        fileDialog.setNameFilter(filter)
-        fileDialog.setWindowTitle(
-            self.tr("%s - Choose Detection Model Weight") % __appname__,
-            )
-        fileDialog.setWindowFilePath(path)
-        fileDialog.setViewMode(FileDialogPreview.Detail)
-        if fileDialog.exec_():
-            self.detection_weight = fileDialog.selectedFiles()[0]
-            if self.detection_weight and self.filename:
-                self.yolov3(self.filename,self.detection_weight, add=False)
-            else:
-                print("please load image and detection model")
+    # def detect(self):
+    #     print("load model and detect")
+    #     if self.filename:
+    #         path = os.path.dirname(str(self.filename))
+    #     else:
+    #         path = "."
+    #
+    #     filter = "yolov3 model weight (*.pt)"
+    #     fileDialog = FileDialogPreview(self)
+    #     fileDialog.setFileMode(FileDialogPreview.ExistingFile)
+    #     fileDialog.setNameFilter(filter)
+    #     fileDialog.setWindowTitle(
+    #         self.tr("%s - Choose Detection Model Weight") % __appname__,
+    #         )
+    #     fileDialog.setWindowFilePath(path)
+    #     fileDialog.setViewMode(FileDialogPreview.Detail)
+    #     if fileDialog.exec_():
+    #         self.detection_weight = fileDialog.selectedFiles()[0]
+    #         if self.detection_weight and self.filename:
+    #             self.yolov3(self.filename,self.detection_weight, add=False)
+    #         else:
+    #             print("please load image and detection model")
     #
     # def detectYolov3(self):
     #     print("load model and detect")
@@ -347,56 +346,11 @@ class MainWindow(QtWidgets.QMainWindow):
     #         print(len(self.detect_shapes))
     #         print(self.detect_shapes)
     #     self.loadLabels(self.detect_shapes)
-    #
-    # def trainYolov3(self, _value=False, dirpath=None):
-    #     print("select image data to re-train yolov3")
-    #     defaultOpenDirPath = dirpath if dirpath else "."
-    #     if self.lastOpenDir and os.path.exists(self.lastOpenDir):
-    #         defaultOpenDirPath = self.lastOpenDir
-    #     else:
-    #         defaultOpenDirPath = (
-    #             os.path.dirname(self.filename) if self.filename else "."
-    #         )
-    #
-    #     targetDirPath = str(
-    #         QtWidgets.QFileDialog.getExistingDirectory(
-    #             self,
-    #             self.tr("%s - Open Directory") % __appname__,
-    #             defaultOpenDirPath,
-    #             QtWidgets.QFileDialog.ShowDirsOnly
-    #             | QtWidgets.QFileDialog.DontResolveSymlinks,
-    #             )
-    #     )
-    #
-    #     print(targetDirPath)
-    #     if targetDirPath:
-    #         data_dict = jsonToYolo(targetDirPath)
-    #         train(data_dict,targetDirPath)
-
-    def train(self, _value=False, dirpath=None):
-        print("select image data to re-train yolov3")
-        defaultOpenDirPath = dirpath if dirpath else "."
-        if self.lastOpenDir and os.path.exists(self.lastOpenDir):
-            defaultOpenDirPath = self.lastOpenDir
-        else:
-            defaultOpenDirPath = (
-                os.path.dirname(self.filename) if self.filename else "."
-            )
-
-        targetDirPath = str(
-            QtWidgets.QFileDialog.getExistingDirectory(
-                self,
-                self.tr("%s - Open Directory") % __appname__,
-                defaultOpenDirPath,
-                QtWidgets.QFileDialog.ShowDirsOnly
-                | QtWidgets.QFileDialog.DontResolveSymlinks,
-                )
-        )
-
-        print(targetDirPath)
-        if targetDirPath:
-            data_dict = jsonToYolo(targetDirPath)
-            train(data_dict,targetDirPath)
+    def train_file_transfer(self):
+        print(self.filename)
+        targetDirPath = os.path.dirname(self.filename)
+        jsonToYolo(targetDirPath)
+        self.trainWidget.file_list.setText(os.path.join(targetDirPath,'train_data.yaml'))
 
     def deletFile(self):
         yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
