@@ -1,9 +1,10 @@
 import os
+import shutil
 from qtpy import QtWidgets, QtGui
-from ultralytics import YOLO
+from ultralytics import YOLO, settings
 from sahi import AutoDetectionModel
 from sahi.predict import get_prediction, get_sliced_prediction, predict
-from ladder.utils import coco2json
+from ladder.utils import coco2json, ultraResult2Json
 
 
 class TrainWidget(QtWidgets.QWidget):
@@ -58,16 +59,27 @@ class TrainWidget(QtWidgets.QWidget):
         model = self.modelSelectBox.currentText()
         data = self.file_list.text()
         weight = self.weight_list.text()
-        self.yolov8Train(model= model, data=data,weight=weight,epochs=epoch,imgsz=imgsz)
+        self.yolov8Train(model= model, data=data,weight=weight,epochs=epoch,imgsz=imgsz, keep_mid=False)
 
-    def yolov8Train(self, model, data, weight, epochs, imgsz):
+    def yolov8Train(self, model, data, weight, epochs, imgsz, keep_mid=True):
         # train
         if not weight:
             weight = model.split(",")[0] + ".pt"
             model = YOLO(weight)
         else:
             model = YOLO(weight)
+
+        # change settings
+        runs_dir = os.path.dirname(self.file_list.text())
+        settings.update({
+            'runs_dir': runs_dir
+        })
         results = model.train(data=data, epochs=epochs,imgsz=imgsz)
+        weight_path = os.path.join(runs_dir,'detect/train/weights')
+        shutil.move(weight_path,runs_dir)
+        if not keep_mid:
+            shutil.rmtree(os.path.join(runs_dir,'detect'))
+
 
     def open_file_dialog(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -106,6 +118,7 @@ class DetectWidget(QtWidgets.QWidget):
             '---Select Model---',
             'yolov8n(3.2M)','yolov8s(11.2M)' ,'yolov8m(25.9M)', 'yolov8l(43.7M)','yolov8x(68.2M)'
         ])
+        self.singleImg = None
         self.imgSize = QtWidgets.QLineEdit()
         self.imgSize.setPlaceholderText("Enter like: 640")
         self.iou = QtWidgets.QLineEdit()
@@ -117,7 +130,7 @@ class DetectWidget(QtWidgets.QWidget):
 
         self.detectBtn = QtWidgets.QPushButton()
         self.detectBtn.setText("Start Detecting")
-        self.detectBtn.clicked.connect(self.get_para)
+        self.detectBtn.clicked.connect(self.star_detect)
 
         directDialog = QtWidgets.QPushButton("Browse data")
         directDialog.clicked.connect(self.open_file_dialog)
@@ -172,18 +185,25 @@ class DetectWidget(QtWidgets.QWidget):
             for file in filenames:
                 self.weight_list.setText(str(file))
 
-    def get_para(self):
-        print(self.imgSize.text())
-        print(self.modelSelectBox.currentText())
+    def star_detect(self):
         conf = float(self.conf.text())
         iou = float(self.iou.text())
         imgsz = int(self.imgSize.text())
         model = self.modelSelectBox.currentText()
         data = self.file_list.text()
         weight = self.weight_list.text()
-        results = self.yolov8Detect(model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou)
 
-    def yolov8Detect(self, model, data, weight, imgsz, conf, iou):
+        if data:
+            self.yolov8Detect(
+                model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=True
+            )
+        else:
+            self.yolov8Detect(
+                model= model, data=self.singleImg,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=True
+            )
+
+
+    def yolov8Detect(self, model, data, weight, imgsz, conf, iou, keep_mid=True):
         # predict
         if not weight:
             weight = model.split(",")[0] + ".pt"
@@ -191,9 +211,22 @@ class DetectWidget(QtWidgets.QWidget):
         else:
             model = YOLO(weight)
 
+        # changing settings
+        runs_dir = os.path.dirname(self.file_list.text())
+        settings.update({
+            'runs_dir': runs_dir
+        })
+        print(settings)
+
         results = model.predict(data, save=True, save_conf=True, save_txt=True,
                                 imgsz=imgsz, conf=conf, iou=iou)
+
+        ultraResult2Json(results=results)
+
+        if not keep_mid:
+            shutil.rmtree(os.path.join(runs_dir,'detect'))
         return results
+
 
     def sliceDetect(self):
         detection_model = AutoDetectionModel.from_pretrained(
