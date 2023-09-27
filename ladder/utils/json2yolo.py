@@ -1,7 +1,11 @@
 import json
 from shutil import copy2
 import os
+
+import cv2
 import yaml
+
+from ladder.widgets.label_file import LabelFile
 
 def jsonToYolo(input_path):
     label_list = []
@@ -71,9 +75,56 @@ def jsonToYolo(input_path):
     with open(data_yaml, 'w', encoding="utf-8") as f:
         yaml.dump(train_data_config,f)
 
-
     data_dict = dict(
         data = os.path.join(input_path,'train'),
         names = label_list
     )
     return data_dict
+
+def ultraResult2Json(results):
+    for result in results:
+        print(result)
+        path = result.path
+        work_dir = os.path.dirname(path)
+        img = os.path.basename(path)
+        json_out = img.split('.')[0] + ".json"
+        json_url = os.path.join(work_dir,json_out)
+
+        lf = LabelFile()
+        shapes = []
+        boxes = result.boxes.xyxy
+        probs = result.boxes.conf
+        cls = result.boxes.cls
+        names_dict = result.names
+        h,w = result.orig_shape
+        for i, box in enumerate(boxes):
+            shape=dict(
+                label=names_dict[cls[i].item()],
+                points= [[box[0].item(), box[1].item()], [box[2].item(), box[3].item()]],
+                shape_type="rectangle",
+                group_id=None,
+                flags = {
+                    "prob": probs[i].item()
+                }
+            )
+            print(shape)
+            shapes.append(shape)
+        try:
+            lf.save(
+                filename=json_url,
+                shapes=shapes,
+                imagePath=img,
+                imageData=None,
+                imageHeight=h,
+                imageWidth=w,
+                otherData=None,
+                flags={},
+            )
+        except Exception as e:
+            raise e
+    # if os.path.isfile(data):
+        # work_dir = os.path.dirname(data)
+        # img = os.path.basename(data)
+        # json_out = img.split('.')[0] + ".json"
+        # json_url = os.path.join(work_dir,json_out)
+
