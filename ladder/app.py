@@ -200,6 +200,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.filename = fileDialog.selectedFiles()[0]
             if self.filename:
                 self.loadFile(self.filename)
+                self.detectWidget.singleImg = self.filename
 
     def openDir(self):
         print("open dir")
@@ -290,29 +291,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.adjustSize()
         self.canvas.update()
 
-    # def detect(self):
-    #     print("load model and detect")
-    #     if self.filename:
-    #         path = os.path.dirname(str(self.filename))
-    #     else:
-    #         path = "."
-    #
-    #     filter = "yolov3 model weight (*.pt)"
-    #     fileDialog = FileDialogPreview(self)
-    #     fileDialog.setFileMode(FileDialogPreview.ExistingFile)
-    #     fileDialog.setNameFilter(filter)
-    #     fileDialog.setWindowTitle(
-    #         self.tr("%s - Choose Detection Model Weight") % __appname__,
-    #         )
-    #     fileDialog.setWindowFilePath(path)
-    #     fileDialog.setViewMode(FileDialogPreview.Detail)
-    #     if fileDialog.exec_():
-    #         self.detection_weight = fileDialog.selectedFiles()[0]
-    #         if self.detection_weight and self.filename:
-    #             self.yolov3(self.filename,self.detection_weight, add=False)
-    #         else:
-    #             print("please load image and detection model")
-    #
     # def detectYolov3(self):
     #     print("load model and detect")
     #     if self.filename:
@@ -335,6 +313,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #             self.yolov3(self.filename,self.detection_weight, add=False)
     #         else:
     #             print("please load image and detection model")
+
     # def yolov3(self,img,weight, add=True):
     #     # self.detect_shapes = run(source=img,weights=weight, imgsz=3000, save_txt=True)
     #     self.detect_shapes = detect_run(source=img,weights=weight, save_txt=True, imgsz=1100,conf_thres=0.5,iou_thres=0.6)
@@ -346,11 +325,13 @@ class MainWindow(QtWidgets.QMainWindow):
     #         print(len(self.detect_shapes))
     #         print(self.detect_shapes)
     #     self.loadLabels(self.detect_shapes)
+
     def train_file_transfer(self):
         print(self.filename)
         targetDirPath = os.path.dirname(self.filename)
         jsonToYolo(targetDirPath)
         self.trainWidget.file_list.setText(os.path.join(targetDirPath,'train_data.yaml'))
+        self.detectWidget.weight_list.setText(os.path.join(targetDirPath,'weights/best.pt'))
 
     def deletFile(self):
         yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
