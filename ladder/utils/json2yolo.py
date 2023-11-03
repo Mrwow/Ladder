@@ -30,9 +30,9 @@ def jsonToYolo(input_path):
                 pass
             # copy images into train data folder
             image_output_path = os.path.join(input_path,"train/images")
-            imagePath = os.path.join(input_path,imagePath)
             if not os.path.exists(image_output_path):
                 os.makedirs(image_output_path)
+            imagePath = os.path.join(input_path,imagePath)
             copy2(imagePath,image_output_path)
 
             # label files folder
@@ -83,7 +83,6 @@ def jsonToYolo(input_path):
 
 def ultraResult2Json(results):
     for result in results:
-        print(result)
         path = result.path
         work_dir = os.path.dirname(path)
         img = os.path.basename(path)
@@ -107,7 +106,6 @@ def ultraResult2Json(results):
                     "prob": probs[i].item()
                 }
             )
-            print(shape)
             shapes.append(shape)
         try:
             lf.save(
