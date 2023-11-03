@@ -681,7 +681,7 @@ class Canvas(QtWidgets.QWidget):
         # return cropped image and H matrix
         return dst
 
-    def cropImage(self,img_url, pts):
+    def cropImage(self,img_url, pts, out_dir):
         print("start cropping")
         img = cv2.imread(img_url)
         (x1,y1) = pts[0]
@@ -695,15 +695,14 @@ class Canvas(QtWidgets.QWidget):
         y_max = int(max(y1,y2,y3,y4))
 
         img_crop = img[y_min:y_max,x_min:x_max]
-        img_dir = os.path.dirname(str(img_url))
         img_name = os.path.basename(str(img_url)).split('.')
         img_crop_name = img_name[0] + f"_{x_min}_{y_min}_{x_max}_{y_max}." + img_name[1]
-        img_crop_name = os.path.join(img_dir,img_crop_name)
+        img_crop_name = os.path.join(out_dir,img_crop_name)
         cv2.imwrite(img_crop_name,img_crop)
 
         json = img_url.split(".")[0] + ".json"
         if os.path.isfile(json):
-            cropJson(img_url=img_url, json_url=json, pts=[x_min, y_min, x_max, y_max])
+            cropJson(img_url=img_url, json_url=json, pts=[x_min, y_min, x_max, y_max], out_dir=out_dir)
 
         return img_crop_name
 
