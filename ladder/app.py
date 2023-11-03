@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import functools
-import io
 import os
-import PIL.Image
 import math
 import imgviz
-import cv2
+from shutil import copy2
 
 from qtpy import QtWidgets, QtCore, QtGui
 from qtpy.QtCore import Qt
@@ -16,8 +14,6 @@ from ladder.widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelListWidget,LabelListWidgetItem, CropDialog, TrainWidget, DetectWidget
 from ladder.actions import baseAction
 from ladder.utils import jsonToYolo
-# from ladder.detect import detect_run, train
-# from ladder.detect import detect_run, jsonToYolo, train, imputeMissingBoxes
 
 LABEL_COLORMAP = imgviz.label_colormap()
 # LABEL_COLORMAP = [[0,0,0],
@@ -36,6 +32,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.output_dir = output_dir
         self.labelFile = None
         self._noSelectionSlot = False
+        self.image = QtGui.QImage()
+        self.imagePath = None
+        self.otherData = None
+        self.output_file = output_file
+        self.lastOpenDir = None
+        self.trainFolder = None
 
         # canvas
         self.zoomWidget = ZoomWidget()
@@ -47,7 +49,6 @@ class MainWindow(QtWidgets.QMainWindow):
             Qt.Horizontal: scrollAreaForCanvas.horizontalScrollBar(),
             Qt.Vertical: scrollAreaForCanvas.verticalScrollBar()
         }
-
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.newShape.connect(self.newShape)
         self.canvas.labelUpdate.connect(self.labelUpdate)
@@ -57,6 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # label dialog for label input and edit
         self.labelDialog = LabelDialog(parent=self)
         self.cropDialog = CropDialog(parent=self)
+
         # uniqul labelList
         self.uniqLabelList = UniqueLabelQListWidget()
 
@@ -69,6 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.shape_dock.setObjectName("Labels")
         self.shape_dock.setWidget(self.labelList)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.shape_dock)
+
         # train widget
         self.trainWidget = TrainWidget()
         self.train_dock = QtWidgets.QDockWidget(
@@ -76,6 +79,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.train_dock.setWidget(self.trainWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.train_dock)
+
         # Detection widget
         self.detectWidget = DetectWidget()
         self.detect_dock = QtWidgets.QDockWidget(
@@ -93,10 +97,6 @@ class MainWindow(QtWidgets.QMainWindow):
         open_dir = action("Open a folder", "openDir", self.openDir)
         btn_open_dir = QtWidgets.QToolButton()
         btn_open_dir.setDefaultAction(open_dir)
-
-        # detect = action("&Detect",'detect', self.detect)
-        # btn_detect = QtWidgets.QToolButton()
-        # btn_detect.setDefaultAction(detect)
 
         next_img = action("&Next image",'next', self.nextImg)
         btn_next_img = QtWidgets.QToolButton()
@@ -134,7 +134,7 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_del_shape = QtWidgets.QToolButton()
         btn_del_shape.setDefaultAction(del_shape)
 
-        train_file = action("&Train", "train", self.train_file_transfer)
+        train_file = action("&Train", "train", self.train_file_format)
         btn_train = QtWidgets.QToolButton()
         btn_train.setDefaultAction(train_file)
 
@@ -146,34 +146,26 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         toolbar.addWidget(btn_open_file)
         toolbar.addWidget(btn_crop_img)
-        # toolbar.addWidget(btn_open_dir)
-        # toolbar.addWidget(btn_detect)
         toolbar.addWidget(btn_zoom_in)
         toolbar.addWidget(btn_zoom_out)
         toolbar.addWidget(btn_edit_shape)
         toolbar.addWidget(btn_draw_rect)
         # toolbar.addWidget(btn_next_img)
         # toolbar.addWidget(btn_pre_img)
-
+        # toolbar.addWidget(btn_open_dir)
+        # toolbar.addWidget(btn_detect)
         toolbar.addWidget(btn_save_file)
         toolbar.addWidget(btn_del_shape)
-        
         toolbar.addWidget(btn_train)
-
         self.addToolBar(Qt.TopToolBarArea,toolbar)
 
-        self.image = QtGui.QImage()
-        self.imagePath = None
-        self.otherData = None
-        self.output_file = output_file
-        self.lastOpenDir = None
 
         self.settings = QtCore.QSettings("ladder", "ladder")
         self.window_size = (1200, 800)
         size = self.settings.value("window/size", QtCore.QSize(self.window_size[0],self.window_size[1]))
         self.resize(size)
 
-
+    #<<<<<<<<<<<<<<<<open file>>>>>>>>>>>>>>>
     def openFile(self, _value=False):
         if self.filename:
             path = os.path.dirname(str(self.filename))
@@ -201,6 +193,11 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.filename:
                 self.loadFile(self.filename)
                 self.detectWidget.singleImg = self.filename
+                self.trainFolder = os.path.join(os.path.dirname(self.filename), "labels")
+                if not os.path.exists(self.trainFolder):
+                    os.makedirs(self.trainFolder)
+                copy2(self.filename,self.trainFolder)
+
 
     def openDir(self):
         print("open dir")
@@ -271,7 +268,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.setEnabled(True)
         self.zoomValueInitial()
         self.canvas.update()
+    #<<<<<<<<<<<<<<<<open file>>>>>>>>>>>>>>>
 
+    #<<<<<<<<<<<<<<<< zoom >>>>>>>>>>>>>>>
     def zoomValueInitial(self):
         img_w, img_h = self.canvas.pixmap.width(), self.canvas.pixmap.height()
         win_w = self.window_size[0]
@@ -290,109 +289,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.scale = 0.01 * self.zoomWidget.value()
         self.canvas.adjustSize()
         self.canvas.update()
+    #<<<<<<<<<<<<<<<< zoom >>>>>>>>>>>>>>>
 
-    # def detectYolov3(self):
-    #     print("load model and detect")
-    #     if self.filename:
-    #         path = os.path.dirname(str(self.filename))
-    #     else:
-    #         path = "."
-    #
-    #     filter = "yolov3 model weight (*.pt)"
-    #     fileDialog = FileDialogPreview(self)
-    #     fileDialog.setFileMode(FileDialogPreview.ExistingFile)
-    #     fileDialog.setNameFilter(filter)
-    #     fileDialog.setWindowTitle(
-    #         self.tr("%s - Choose Detection Model Weight") % __appname__,
-    #         )
-    #     fileDialog.setWindowFilePath(path)
-    #     fileDialog.setViewMode(FileDialogPreview.Detail)
-    #     if fileDialog.exec_():
-    #         self.detection_weight = fileDialog.selectedFiles()[0]
-    #         if self.detection_weight and self.filename:
-    #             self.yolov3(self.filename,self.detection_weight, add=False)
-    #         else:
-    #             print("please load image and detection model")
-
-    # def yolov3(self,img,weight, add=True):
-    #     # self.detect_shapes = run(source=img,weights=weight, imgsz=3000, save_txt=True)
-    #     self.detect_shapes = detect_run(source=img,weights=weight, save_txt=True, imgsz=1100,conf_thres=0.5,iou_thres=0.6)
-    #     print("++++++boxes 11111++++++")
-    #     print(len(self.detect_shapes))
-    #     if add:
-    #         # self.detect_shapes = imputeMissingBoxes(img=img, shapes=self.detect_shapes)
-    #         print("++++++boxes 2222++++++")
-    #         print(len(self.detect_shapes))
-    #         print(self.detect_shapes)
-    #     self.loadLabels(self.detect_shapes)
-
-    def train_file_transfer(self):
-        print(self.filename)
-        targetDirPath = os.path.dirname(self.filename)
-        jsonToYolo(targetDirPath)
-        self.trainWidget.file_list.setText(os.path.join(targetDirPath,'train_data.yaml'))
-        self.detectWidget.weight_list.setText(os.path.join(targetDirPath,'weights/best.pt'))
-
-    def deletFile(self):
-        yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
-        msg = self.tr(
-            "You are about to permanently delete {} polygons, "
-            "proceed anyway?"
-        ).format(len(self.canvas.selectedShapes))
-        if yes == QtWidgets.QMessageBox.warning(
-                self, self.tr("Attention"), msg, yes | no, yes
-        ):
-            shapes = self.canvas.deleteSelected()
-            for shape in shapes:
-                item = self.labelList.findItemByShape(shape)
-                self.labelList.removeItem(item)
-
-    def editShape(self):
-        print("edit")
-        self.canvas.mode = self.canvas.EDIT
-        return
-
-    def drawRec(self):
-        print("draw")
-        self.canvas.mode = self.canvas.CREATE
-        return
-
-    def nextImg(self):
-        print("nextImg")
-        return
-
-    def preImg(self):
-        print("preImg")
-        return
-
-    def moveShape(self):
-        self.canvas.endMove(copy=False)
-        self.setDirty()
-
-    # React to canvas signals.
-    def shapeSelectionChanged(self, selected_shapes):
-        self._noSelectionSlot = True
-        for shape in self.canvas.selectedShapes:
-            shape.selected = False
-        self.labelList.clearSelection()
-        self.canvas.selectedShapes = selected_shapes
-        for shape in self.canvas.selectedShapes:
-            shape.selected = True
-            item = self.labelList.findItemByShape(shape)
-            self.labelList.selectItem(item)
-            self.labelList.scrollToItem(item)
-
-        self._noSelectionSlot = False
-        n_selected = len(selected_shapes)
-        # self.actions.delete.setEnabled(n_selected)
-        # self.actions.duplicate.setEnabled(n_selected)
-        # self.actions.copy.setEnabled(n_selected)
-        # self.actions.edit.setEnabled(n_selected == 1)
-
+    #<<<<<<<<<<<<<<<<save file>>>>>>>>>>>>>>>
     def saveFile(self, _value=False):
         # assert not self.image.isNull(), "cannot save empty image"
         if self.labelFile:
-            # DL20180323 - overwrite when in directory
+            # overwrite when in directory
             self._saveFile(self.labelFile.filename)
         elif self.output_file:
             self._saveFile(self.output_file)
@@ -486,7 +389,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return True
         except ValueError:
             return False
+    #<<<<<<<<<<<<<<<<save file>>>>>>>>>>>>>>>
 
+    #<<<<<<<<<<<<<<<< shape and label >>>>>>>>>>>>>>>
     def currentPath(self):
         return os.path.dirname(str(self.filename)) if self.filename else "."
 
@@ -494,6 +399,36 @@ class MainWindow(QtWidgets.QMainWindow):
         return QtWidgets.QMessageBox.critical(
             self, title, "<p><b>%s</b></p>%s" % (title, message)
         )
+
+    # React to canvas signals.
+    def shapeSelectionChanged(self, selected_shapes):
+        self._noSelectionSlot = True
+        for shape in self.canvas.selectedShapes:
+            shape.selected = False
+        self.labelList.clearSelection()
+        self.canvas.selectedShapes = selected_shapes
+        for shape in self.canvas.selectedShapes:
+            shape.selected = True
+            item = self.labelList.findItemByShape(shape)
+            self.labelList.selectItem(item)
+            self.labelList.scrollToItem(item)
+
+        self._noSelectionSlot = False
+        n_selected = len(selected_shapes)
+
+    def deletFile(self):
+        yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+        msg = self.tr(
+            "You are about to permanently delete {} polygons, "
+            "proceed anyway?"
+        ).format(len(self.canvas.selectedShapes))
+        if yes == QtWidgets.QMessageBox.warning(
+                self, self.tr("Attention"), msg, yes | no, yes
+        ):
+            shapes = self.canvas.deleteSelected()
+            for shape in shapes:
+                item = self.labelList.findItemByShape(shape)
+                self.labelList.removeItem(item)
 
     #
     def labelUpdate(self):
@@ -509,6 +444,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.labelDialog.addLabelHistory(self.canvas.hShape.label)
                 item = self.currentItem()
                 item.setText(self.canvas.hShape.label)
+
+    def currentItem(self):
+        items = self.labelList.selectedItems()
+        if items:
+            return items[0]
+        return None
 
     def _update_shape_color(self, shape):
         r, g, b = self._get_rgb_by_label(shape.label)
@@ -542,12 +483,6 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.canvas.deSelectShape()
 
-    def currentItem(self):
-        items = self.labelList.selectedItems()
-        if items:
-            return items[0]
-        return None
-
     def newShape(self):
         flags = {}
         group_id = None
@@ -571,9 +506,10 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.canvas.undoLastLine()
             self.canvas.shapesBackups.pop()
+    #<<<<<<<<<<<<<<<< shape and label >>>>>>>>>>>>>>>
 
+    #<<<<<<<<<<<<<<<<crop image>>>>>>>>>>>>>>>
     def cropImg(self):
-        # print("croping mode")
         self.canvas.mode = self.canvas.CROP
         print(self.canvas.mode)
 
@@ -581,12 +517,46 @@ class MainWindow(QtWidgets.QMainWindow):
         msg = self.cropDialog.popUp()
         if msg:
             print(self.filename)
-            img_crop_name = self.canvas.cropImage(img_url=self.filename, pts=self.canvas.cropPoints)
+            img_crop_name = self.canvas.cropImage(img_url=self.filename, pts=self.canvas.cropPoints, out_dir=self.trainFolder)
             self.filename = img_crop_name
             if self.filename:
                 self.loadFile(self.filename)
+    #<<<<<<<<<<<<<<<<crop image>>>>>>>>>>>>>>>
 
+    def editShape(self):
+        print("edit")
+        self.canvas.mode = self.canvas.EDIT
+        return
 
+    def drawRec(self):
+        print("draw")
+        self.canvas.mode = self.canvas.CREATE
+        return
 
+    def nextImg(self):
+        print("nextImg")
+        return
 
+    def preImg(self):
+        print("preImg")
+        return
 
+    def moveShape(self):
+        self.canvas.endMove(copy=False)
+        self.setDirty()
+
+    def train_file_format(self):
+        print(self.filename)
+        if self.filename:
+            training_data_fd = self.trainFolder
+        else:
+            training_data_fd = QtWidgets.QFileDialog.getExistingDirectory(
+                self,
+                "Select training data folder",
+            )
+            # training_data_fd = os.path.dirname(training_data_fd)
+        print(f"training data folder is {training_data_fd}")
+
+        jsonToYolo(training_data_fd)
+        self.trainWidget.file_list.setText(os.path.join(training_data_fd,'train_data.yaml'))
+        self.detectWidget.weight_list.setText(os.path.join(training_data_fd,'weights/best.pt'))
