@@ -6,7 +6,6 @@ setuptools.setup(
     url='https://github.com/Mrwow/Ladder',
     python_requires='>=3.7',
     classifiers=[
-        "Programming Language :: Python :: 3.7.11",
         "Programming Language :: Python :: 3.8.17",
         "Programming Language :: Python :: 3.9.7",
         "Programming Language :: Python :: 3.10.12",
