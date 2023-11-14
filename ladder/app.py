@@ -194,9 +194,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.loadFile(self.filename)
                 self.detectWidget.singleImg = self.filename
                 self.trainFolder = os.path.join(os.path.dirname(self.filename), "labels")
-                if not os.path.exists(self.trainFolder):
-                    os.makedirs(self.trainFolder)
-                copy2(self.filename,self.trainFolder)
+                # if not os.path.exists(self.trainFolder):
+                #     os.makedirs(self.trainFolder)
+                # copy2(self.filename,self.trainFolder)
 
 
     def openDir(self):
@@ -517,6 +517,8 @@ class MainWindow(QtWidgets.QMainWindow):
         msg = self.cropDialog.popUp()
         if msg:
             print(self.filename)
+            if not os.path.exists(self.trainFolder):
+                os.makedirs(self.trainFolder)
             img_crop_name = self.canvas.cropImage(img_url=self.filename, pts=self.canvas.cropPoints, out_dir=self.trainFolder)
             self.filename = img_crop_name
             if self.filename:
