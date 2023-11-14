@@ -4,6 +4,7 @@ from .file_dialog import FileDialogPreview
 from .label_file import LabelFile
 from .shape import Shape
 from .crop_rec import CropDialog
+from .train_detect_widget import TrainWidget, DetectWidget
 
 
 from .label_dialog import LabelDialog

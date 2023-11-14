@@ -2,9 +2,7 @@ import os
 import shutil
 from qtpy import QtWidgets, QtGui
 from ultralytics import YOLO, settings
-from sahi import AutoDetectionModel
-from sahi.predict import get_prediction, get_sliced_prediction, predict
-from ladder.utils import coco2json, ultraResult2Json
+from ladder.utils import coco2json, ultraResult2Json, sliceDetect, sliceDetectBatch
 
 
 class TrainWidget(QtWidgets.QWidget):
@@ -49,6 +47,7 @@ class TrainWidget(QtWidgets.QWidget):
         layout.addWidget(self.imgSize,6,1,)
         layout.addWidget(self.trainBtn,7,0,1,2)
         self.setLayout(layout)
+        self.path = "."
 
     def get_para(self):
         print(self.epoch.text())
@@ -76,7 +75,10 @@ class TrainWidget(QtWidgets.QWidget):
         })
         results = model.train(data=data, epochs=epochs,imgsz=imgsz)
         weight_path = os.path.join(runs_dir,'detect/train/weights')
-        shutil.move(weight_path,runs_dir)
+        try:
+            shutil.move(weight_path,runs_dir)
+        except Exception as e:
+            raise e
         if not keep_mid:
             shutil.rmtree(os.path.join(runs_dir,'detect'))
 
@@ -85,7 +87,7 @@ class TrainWidget(QtWidgets.QWidget):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
             "Select Files",
-            "/home",
+            self.path,
             "data (*.yaml)"
 
         )
@@ -100,7 +102,7 @@ class TrainWidget(QtWidgets.QWidget):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
             "Select Files",
-            "/home",
+            self.path,
             "weight (*.pt *.pyt)"
 
         )
@@ -127,6 +129,8 @@ class DetectWidget(QtWidgets.QWidget):
         self.conf.setPlaceholderText("Enter like: 0.25")
         self.overlap = QtWidgets.QLineEdit()
         self.overlap.setPlaceholderText("Enter like: 0.25")
+        self.slice = QtWidgets.QLineEdit()
+        self.slice.setPlaceholderText("Enter like: 2600")
 
         self.detectBtn = QtWidgets.QPushButton()
         self.detectBtn.setText("Start Detecting")
@@ -153,9 +157,11 @@ class DetectWidget(QtWidgets.QWidget):
         layout.addWidget(self.conf,6,1)
         layout.addWidget(QtWidgets.QLabel('Image size:'),7,0)
         layout.addWidget(self.imgSize,7,1)
-        layout.addWidget(QtWidgets.QLabel('Overlap:'),8,0)
-        layout.addWidget(self.overlap,8,1)
-        layout.addWidget(self.detectBtn,9,0,1,2)
+        layout.addWidget(QtWidgets.QLabel('Slice size:'),8,0)
+        layout.addWidget(self.slice,8,1)
+        layout.addWidget(QtWidgets.QLabel('Overlap:'),9,0)
+        layout.addWidget(self.overlap,9,1)
+        layout.addWidget(self.detectBtn,10,0,1,2)
         self.setLayout(layout)
 
         self.path = "."
@@ -169,9 +175,11 @@ class DetectWidget(QtWidgets.QWidget):
         )
         if filenames:
             for file in filenames:
-                dir_path = file
-                self.file_list.setText(str(dir_path))
                 self.path = os.path.dirname(file)
+                self.file_list.setText(str(file))# for single image detection
+
+                # self.file_list.setText(str(self.path)) # for multiple images detection
+
 
     def open_weight_dialog(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
@@ -192,16 +200,30 @@ class DetectWidget(QtWidgets.QWidget):
         model = self.modelSelectBox.currentText()
         data = self.file_list.text()
         weight = self.weight_list.text()
+        slice_sz = int(self.slice.text())
+        overlap = float(self.overlap.text())
 
-        if data:
-            self.yolov8Detect(
-                model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=True
-            )
+        if slice_sz and overlap:
+
+            if os.path.isfile(data):
+                print("slice detection in single image!")
+                sliceDetect(weight=weight,img=data,conf=conf,iou=iou,img_size=imgsz,
+                            img_h=slice_sz,img_w=slice_sz,overlap=overlap)
+            if os.path.isdir(data):
+                print("slice detection in multiple images!")
+                sliceDetectBatch(weight=weight,img_fd=data,conf=conf,iou=iou,img_size=imgsz,
+                                 img_h=slice_sz,img_w=slice_sz,overlap=overlap)
+
         else:
-            self.yolov8Detect(
-                model= model, data=self.singleImg,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=True
-            )
-
+            print("standard detection in a whole image!")
+            if data:
+                self.yolov8Detect(
+                    model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False
+                )
+            else:
+                self.yolov8Detect(
+                    model= model, data=self.singleImg,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False
+                )
 
     def yolov8Detect(self, model, data, weight, imgsz, conf, iou, keep_mid=True):
         # predict
@@ -226,23 +248,3 @@ class DetectWidget(QtWidgets.QWidget):
         if not keep_mid:
             shutil.rmtree(os.path.join(runs_dir,'detect'))
         return results
-
-
-    def sliceDetect(self):
-        detection_model = AutoDetectionModel.from_pretrained(
-            model_type='yolov8',
-            model_path=self.weight_list.text(),
-            confidence_threshold=int(self.conf.text()),
-            device="cpu", # or 'cuda:0'
-        )
-        result = get_sliced_prediction(
-            self.file_list.text(),
-            detection_model,
-            slice_height = int(self.imgSize.text()),
-            slice_width = int(self.imgSize.text()),
-            overlap_height_ratio = int(self.overlap.text()),
-            overlap_width_ratio = int(self.overlap.text())
-        )
-        result.export_visuals(export_dir=dir)
-        # coco = result.to_coco_annotations()
-        # coco2json(coco,img_url=img_url)
