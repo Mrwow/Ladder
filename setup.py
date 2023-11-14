@@ -6,10 +6,10 @@ setuptools.setup(
     url='https://github.com/Mrwow/Ladder',
     python_requires='>=3.7',
     classifiers=[
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.7.11",
+        "Programming Language :: Python :: 3.8.17",
+        "Programming Language :: Python :: 3.9.7",
+        "Programming Language :: Python :: 3.10.12",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: MacOS :: MacOS X"
         "Operating System :: Microsoft :: Windows :: Windows 10"
@@ -23,7 +23,7 @@ setuptools.setup(
                       # data processing, image processing
                       'qtpy!=1.11.2', 'PyQt5!=5.15.3, !=5.15.4', 'pyside2', 'tqdm>=4.64.0', 'imgviz>=0.11', 'requests>=2.23.0','PyYAML>=5.3.1',
                       # GUI
-                      'torch>=1.7.0', 'torchvision>=0.8.1', 'tensorboard>=2.4.1'
+                      'torch>=1.7.0', 'torchvision>=0.8.1', 'tensorboard>=2.4.1', "ultralytics>=8.0", "sahi>=0.11.14","albumentations>=1.3.1"
                       # deep learning
                       ],
     entry_points={
