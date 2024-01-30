@@ -208,11 +208,11 @@ class DetectWidget(QtWidgets.QWidget):
             if os.path.isfile(data):
                 print("slice detection in single image!")
                 sliceDetect(weight=weight,img=data,conf=conf,iou=iou,img_size=imgsz,
-                            img_h=slice_sz,img_w=slice_sz,overlap=overlap)
+                            img_h=slice_sz,img_w=slice_sz,overlap=overlap,gpu="cpu")
             if os.path.isdir(data):
                 print("slice detection in multiple images!")
                 sliceDetectBatch(weight=weight,img_fd=data,conf=conf,iou=iou,img_size=imgsz,
-                                 img_h=slice_sz,img_w=slice_sz,overlap=overlap)
+                                 img_h=slice_sz,img_w=slice_sz,overlap=overlap,gpu="cpu")
 
         else:
             print("standard detection in a whole image!")
