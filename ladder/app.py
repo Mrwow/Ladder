@@ -222,6 +222,7 @@ class MainWindow(QtWidgets.QMainWindow):
             flags = shape["flags"]
             group_id = shape["group_id"]
             other_data = shape["other_data"]
+            print(points)
 
             if not points:
                 # skip point-empty shape
@@ -233,7 +234,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 group_id=group_id,
             )
             for x, y in points:
-                shape.addPoint(QtCore.QPointF(x, y))
+                try:
+                    shape.addPoint(QtCore.QPointF(x, y))
+                except :
+                    print("find a error in json here")
+
             shape.close()
             s.append(shape)
         self.loadShapes(s)
@@ -549,16 +554,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def train_file_format(self):
         print(self.filename)
-        if self.filename:
-            training_data_fd = self.trainFolder
-        else:
+        # if self.filename:
+        #     training_data_fd = self.trainFolder
+        # else:
+        try:
             training_data_fd = QtWidgets.QFileDialog.getExistingDirectory(
                 self,
                 "Select training data folder",
             )
-            # training_data_fd = os.path.dirname(training_data_fd)
-        print(f"training data folder is {training_data_fd}")
+                # training_data_fd = os.path.dirname(training_data_fd)
+            print(f"training data folder is {training_data_fd}")
 
-        jsonToYolo(training_data_fd)
-        self.trainWidget.file_list.setText(os.path.join(training_data_fd,'train_data.yaml'))
-        self.detectWidget.weight_list.setText(os.path.join(training_data_fd,'weights/best.pt'))
+            jsonToYolo(training_data_fd)
+            self.trainWidget.file_list.setText(os.path.join(training_data_fd,'train_data.yaml'))
+            self.detectWidget.weight_list.setText(os.path.join(training_data_fd,'weights/best.pt'))
+        except:
+            print("Errors from formate training data ")
