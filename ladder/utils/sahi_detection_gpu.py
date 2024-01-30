@@ -104,7 +104,7 @@ def sliceDetect(weight,img,conf,iou,img_size,img_h,img_w,overlap,gpu):
 # parser.add_argument('--overlap', '-o', type=float, help='overlap', required=True)
 # parser.add_argument('--gpu', '-g', type=int, help='overlap', required=True)
 # args = parser.parse_args()
-
+#
 #
 # if __name__ == '__main__':
 #     sliceDetectBatch(weight=args.weight,

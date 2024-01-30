@@ -4,7 +4,7 @@ import cv2
 import json
 import os
 import random
-
+import math
 
 def checkBox(bboxes, w, h):
     new_boxes= []
@@ -95,6 +95,63 @@ def cropJson(img_url, json_url, out_dir, pts, min_visi=0.5):
 
     return
 
+def grid2tile(grid_size,img_url, min_visi):
+    out_dir = os.path.dirname(img_url)
+    out_dir = os.path.join(out_dir,"grids")
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    # load image
+    image = cv2.imread(img_url)
+    h, w ,c =image.shape
+
+    n_row = math.ceil(h / grid_size)
+    n_col = math.ceil(w / grid_size)
+
+    for i in range(n_row):
+        y0 = i * grid_size
+        y1 = y0 + grid_size
+        if y1 > h:
+            y1 = h
+            y0 = h - grid_size
+        for j in range(n_col):
+            x0 = j * grid_size
+            x1 = x0 + grid_size
+            if x1 > w:
+                x1 = w
+                x0 = w - grid_size
+
+            x_min = x0
+            y_min = y0
+            x_max = x1
+            y_max = y1
+            pts = [x_min,y_min, x_max, y_max]
+            print(pts)
+            cropImage(img_url= img_url, pts=pts, out_dir=out_dir)
+            json = img_url.split(".")[0] + ".json"
+            if os.path.isfile(json):
+                cropJson(img_url=img_url, json_url=json, pts=pts, out_dir=out_dir, min_visi=min_visi)
+
+def grid2tileBatch(fd, grid_size,min_visi):
+    for f in os.listdir(fd):
+        if f.endswith("jpg") or f.endswith("JPG") or f.endswith("png"):
+            img_url = os.path.join(fd,f)
+            grid2tile(grid_size=grid_size,img_url=img_url, min_visi=min_visi)
+    return
+
+def cropImage(img_url, pts, out_dir):
+    img = cv2.imread(img_url)
+    x_min = pts[0]
+    y_min = pts[1]
+    x_max = pts[2]
+    y_max = pts[3]
+
+    img_crop = img[y_min:y_max,x_min:x_max]
+    img_name = os.path.basename(str(img_url)).split('.')
+    img_crop_name = img_name[0] + f"_{x_min}_{y_min}_{x_max}_{y_max}." + img_name[1]
+    img_crop_name = os.path.join(out_dir,img_crop_name)
+    cv2.imwrite(img_crop_name,img_crop)
+
 def jsonBoxrotate(img_url,index,outdir,transform, transform_name):
     dirname = os.path.dirname(img_url)
     img_name = os.path.basename(img_url).replace(".JPG","")
@@ -167,7 +224,6 @@ def batchRotate(dir,transform, transform_name, num=1, dig=90):
                 else:
                     jsonBoxrotate(img_url,index=i,outdir=out_dir,transform=transform, transform_name=transform_name)
 
-
 def rotateTransform(img_url, dg=90):
     image = cv2.imread(img_url)
     w, h, c = image.shape
@@ -187,15 +243,24 @@ def rotateTransform(img_url, dg=90):
 
     return  trans
 
+
+
 if __name__ == '__main__':
     # crop alfalfa
-    random.seed(21)
-    dir = "/Users/ZhouTang/Downloads/2023/2023_intern/source/ladder/ladder/data/test"
-    # centercrop
-    transform_ccrop = A.Compose([
-        A.CenterCrop(height=2200,width=2200)
-    ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
-    batchRotate(dir,transform = transform_ccrop, transform_name="centerCrop",num=1, dig=90)
+    # random.seed(21)
+    # dir = "/Users/ZhouTang/Downloads/2023/2023_intern/source/ladder/ladder/data/test"
+    # # centercrop
+    # transform_ccrop = A.Compose([
+    #     A.CenterCrop(height=2200,width=2200)
+    # ], bbox_params=A.BboxParams(format='pascal_voc',min_visibility=0.3))
+    # batchRotate(dir,transform = transform_ccrop, transform_name="centerCrop",num=1, dig=90)
+
+    #
+    # img_url = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/rice/labels/label_2nd/Survived_A.jpg"
+    # grid2tile(grid_size=1500,img_url=img_url,min_visi=0.8)
+
+    fd = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/rice/labels/0_labelRawCheck/fd3"
+    grid2tileBatch(fd=fd,grid_size=1500,min_visi=0.80)
 
 
 
