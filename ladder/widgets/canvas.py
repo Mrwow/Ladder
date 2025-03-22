@@ -528,6 +528,7 @@ class Canvas(QtWidgets.QWidget):
                         self.current.addPoint(self.line[1])
                         self.line[0] = self.current[-1]
                         if self.current.isClosed():
+                            print(f"self.current in drawing is {self.current}")
                             self.finalise()
                     elif self.createMode in ["rectangle", "circle", "line"]:
                         assert len(self.current.points) == 1
