@@ -96,26 +96,26 @@ class TrainWidget(QtWidgets.QWidget):
 
         # change settings
         runs_dir = os.path.dirname(self.file_list.text())
-        print("=================================")
-        print(f'runss_dir is {runs_dir}')
-        print("=================================")
+
         settings.update({
             'runs_dir': runs_dir
         })
         results = model.train(data=data, epochs=epochs,imgsz=imgsz)
+        train_output_dir = os.path.dirname(os.path.dirname(weight))
         weight_path = os.path.join(runs_dir,'detect/train/weights')
-        # weight_new_path = os.path.join(runs_dir,"weights")
-        # if os.path.exists(weight_new_path):
-        #     copy_folder_with_unique_name
+        print("=================================")
+        print(f'runss_dir is {runs_dir}')
+        print(f'train_output_dir is {train_output_dir}')
+        print(f'weight_path is {weight_path}')
+        print("=================================")
 
         try:
-    
             copy_folder_with_unique_name(src_folder=weight_path, dest_folder=runs_dir)
-            # shutil.move(weight_path,runs_dir)
+            if not keep_mid:
+                shutil.rmtree(os.path.join(runs_dir,'detect'))
         except Exception as e:
             raise e
-        if not keep_mid:
-            shutil.rmtree(os.path.join(runs_dir,'detect'))
+
 
     def open_file_dialog(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
