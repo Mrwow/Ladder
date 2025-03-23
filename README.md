@@ -19,6 +19,7 @@ This is a software that allow users to label image, train YOLO, and detect image
 ### Prediction or detection
 - Use the SAHI algrithom to improve small object detection accuray, here is the link for SAHI (https://github.com/obss/sahi).Thanks them for the great work!
 - Adjust different condifence and IoU as needed.
+- Detection in a single image or in a folder with multiple image
 
 ## Installation
 
@@ -46,3 +47,25 @@ conda install -c conda-forge pyside2
 ```
 pip install ultralytics==8.2.39 albumentations==1.4.10 torch==1.13.1 torchvision==0.14.1 tensorboard==2.14.0 sahi==0.11.16 albucore==0.0.12
 ```
+
+### Step 3: Install the Ladder
+Finally, you can install the ladder in your computer.I recommond use `develop` mode during the installation where Ladder is not actually installed in your computer 
+```
+python setup.py develop
+```
+or if you don't care
+```
+python setup.py install
+```
+if you want to delete it
+```
+pip uninstall ladder
+```
+
+### Step 4: Launching the Ladder
+
+```
+python -m ladder
+```
+
+
