@@ -6,15 +6,19 @@ This is a software that allow users to label image, train YOLO, and detect image
 ### Label images with bboxes
 - Draw rectangle and add lables
 - Adjust size, label and postion of rectangles
-- save shapes and labels into a JSON file
-- reload the JSON file into the Ladder
+- Save shapes and labels into a JSON file
+- Reload the JSON file into the Ladder and resume labeling work
+- Check the JSON file format
+- Conver JSON file to YOLO format
 
 ### Training with labeled data
-- Currently support YOLO model set from the ultralytics (https://www.ultralytics.com/)
+- Currently support YOLO model set from the ultralytics (https://www.ultralytics.com/). Thanks them for the great work!
+- Support split images into train, validation, and testing set if you labeled a lot of image, like 10 images. Otherwise, the testing set will be same as training set.
+- Default image size and traing epoch can be edit as needed.
 
 ### Prediction or detection
-- Use the SAHI algrithom to improve small object detection accuray, here is the link for SAHI (https://github.com/obss/sahi)
-
+- Use the SAHI algrithom to improve small object detection accuray, here is the link for SAHI (https://github.com/obss/sahi).Thanks them for the great work!
+- Adjust different condifence and IoU as needed.
 
 ## Installation
 
@@ -34,22 +38,11 @@ conda install numpy pandas matplotlib Pillow seaborn scipy
 ```
 - For GUI
 ```
-pip install qtpy==2.4.1  
-pip install PyQt5==5.15.10
-pip install tqdm==4.66.4 
-pip install imgviz==1.7.5
-pip install grpcio==1.64.1
+pip install qtpy==2.4.1 PyQt5==5.15.10 tqdm==4.66.4 imgviz==1.7.5 grpcio==1.64.1
+
 conda install -c conda-forge pyside2
 ```
 - For deep learning
 ```
-pip install ultralytics==8.2.39
-pip install albumentations==1.4.10
-pip install torch==1.13.1
-pip install torchvision==0.14.1
-pip install tensorboard==2.14.0
-pip install sahi==0.11.16
-pip install albucore==0.0.12
-
 pip install ultralytics==8.2.39 albumentations==1.4.10 torch==1.13.1 torchvision==0.14.1 tensorboard==2.14.0 sahi==0.11.16 albucore==0.0.12
 ```
