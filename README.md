@@ -65,7 +65,7 @@ pip uninstall ladder
 ```
 
 ### Step 4: Launch the Ladder
-Please 
+Please use this
 ```
 python -m ladder
 ```
