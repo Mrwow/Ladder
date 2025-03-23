@@ -17,7 +17,7 @@ This is a software that allow users to label image, train YOLO, and detect image
 - Default image size and traing epoch can be edit as needed.
 
 ### Prediction or detection
-- Use the SAHI algrithom to improve small object detection accuray, here is the link for SAHI (https://github.com/obss/sahi).Thanks them for the great work!
+- Use the SAHI algrithom to improve small object detection accuray, here is the link for SAHI (https://github.com/obss/sahi). Thanks them for the great work!
 - Adjust different condifence and IoU as needed.
 - Detection in a single image or in a folder with multiple image
 
@@ -49,15 +49,15 @@ pip install ultralytics==8.2.39 albumentations==1.4.10 torch==1.13.1 torchvision
 ```
 
 ### Step 3: Install the Ladder
-Finally, you can install the ladder in your computer.I recommond use `develop` mode during the installation where Ladder is not actually installed in your computer 
+Finally, you can install the ladder in your computer.I recommond use `develop` mode during the installation where Ladder is not actually installed in your computer. Each time you download the new version of Ladder, just replace with new code in the older and can go to step 4 directly.
 ```
 python setup.py develop
 ```
-or if you don't care
+or if you don't care, please use this command below
 ```
 python setup.py install
 ```
-if you want to delete it
+if you want to delete it, please use this command below
 ```
 pip uninstall ladder
 ```
