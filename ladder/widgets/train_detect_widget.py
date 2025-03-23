@@ -114,7 +114,7 @@ class TrainWidget(QtWidgets.QWidget):
             if not keep_mid:
                 shutil.rmtree(os.path.join(runs_dir,'detect'))
         except Exception as e:
-            raise e
+            print(f"Error: {e}") 
 
 
     def open_file_dialog(self):
