@@ -10,6 +10,7 @@ import yaml
 
 from ladder.widgets.label_file import LabelFile
 from .imgAug import grid2tileBatch
+from .checkJson import checkBox_batch
 
 # def jsonToYolo_bk(input_path):
 #     label_list = []
@@ -90,6 +91,7 @@ from .imgAug import grid2tileBatch
 def jsonToYolo(input_path):
     image_labeled = len(glob.glob(os.path.join(input_path, "*.json")))
     print(image_labeled)
+    checkBox_batch(input_path)
     if image_labeled <=10:
         jsonToYoloSameTrainTest(input_path=input_path)
     else:
@@ -107,7 +109,8 @@ def jsonToYoloSameTrainTest(input_path):
         os.makedirs(labels_output_path)
 
     for f in os.listdir(input_path):
-        if f.endswith("jpg") or f.endswith("JPG") or f.endswith("png"):
+        if f.endswith("jpg") or f.endswith("JPG") or f.endswith("png") or f.endswith("jpeg") or f.endswith("gif") \
+            or f.endswith("heic") or f.endswith("jp2") or f.endswith("bmp") or f.endswith("heif") or f.endswith("tif") or f.endswith("tiff"):
             # copy image
             imagePath = os.path.join(input_path,f)
 
@@ -213,7 +216,9 @@ def jsonToYoloTrainTestSplit(input_path, train_ratio=0.6, val_ratio=0.2, test_ra
     list_label = []
     list_json = []
     for f in os.listdir(input_path):
-        if not f.startswith(".") and (f.endswith("jpg") or f.endswith("JPG") or f.endswith("png")): 
+        if f.endswith("jpg") or f.endswith("JPG") or f.endswith("png") or f.endswith("jpeg") or f.endswith("gif") \
+            or f.endswith("heic") or f.endswith("jp2") or f.endswith("bmp") or f.endswith("heif") or f.endswith("tif") or f.endswith("tiff"):
+        # if not f.startswith(".") and (f.endswith("jpg") or f.endswith("JPG") or f.endswith("png")) or f.endswith("jpeg"): 
             list_image.append(f)
             img = os.path.basename(f)
             img_json = img.split(".")[0] + ".json"
