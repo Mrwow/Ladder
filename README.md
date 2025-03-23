@@ -9,7 +9,7 @@ This is a software that allow users to label image, train YOLO, and detect image
 - Save shapes and labels into a JSON file
 - Reload the JSON file into the Ladder and resume labeling work
 - Check the JSON file format
-- Conver JSON file to YOLO format
+- Convert JSON file to YOLO format
 
 ### Training with labeled data
 - Currently support YOLO model set from the ultralytics (https://www.ultralytics.com/). Thanks them for the great work!
