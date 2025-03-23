@@ -70,7 +70,7 @@ def cropJson(img_url, json_url, out_dir, pts, min_visi=0.5):
     print(transformed_image.shape)
     h_c, w_c, c_c = transformed_image.shape
     print(f"after cropping, h_c is {h_c}, w_c is {w_c}")
-    print("++++++++++++++")
+    # print("++++++++++++++")
     image_name = os.path.basename(img_url)
     image_out = image_name.split('.')[0]+f"_{pts[0]}_{pts[1]}_{pts[2]}_{pts[3]}."+image_name.split('.')[1]
     json_out = image_name.split('.')[0]+f"_{pts[0]}_{pts[1]}_{pts[2]}_{pts[3]}.json"
@@ -134,9 +134,12 @@ def grid2tile(grid_size,img_url, min_visi):
 
 def grid2tileBatch(fd, grid_size,min_visi):
     for f in os.listdir(fd):
-        if f.endswith("jpg") or f.endswith("JPG") or f.endswith("png"):
-            img_url = os.path.join(fd,f)
-            grid2tile(grid_size=grid_size,img_url=img_url, min_visi=min_visi)
+        if not f.startswith("."):
+            if f.endswith("jpg") or f.endswith("JPG") or f.endswith("png"):
+                img_url = os.path.join(fd,f)
+                print(img_url)
+                grid2tile(grid_size=grid_size,img_url=img_url, min_visi=min_visi)
+                print("+++++++++++")
     return
 
 def cropImage(img_url, pts, out_dir):
@@ -259,8 +262,9 @@ if __name__ == '__main__':
     # img_url = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/rice/labels/label_2nd/Survived_A.jpg"
     # grid2tile(grid_size=1500,img_url=img_url,min_visi=0.8)
 
-    fd = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/rice/labels/0_labelRawCheck/fd3"
-    grid2tileBatch(fd=fd,grid_size=1500,min_visi=0.80)
+    # fd = "/Volumes/work_Joe/archive/2024/WSU/ladder/app/Alfalfa/data/solidStem/exp03/30_ZX"
+    fd = "/Volumes/work_Joe/archive/2024/WSU/ladder/app/Rice/rawImage/crash_small"
+    grid2tileBatch(fd=fd, grid_size=1500, min_visi=0.60)
 
 
 

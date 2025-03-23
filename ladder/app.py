@@ -13,7 +13,7 @@ from ladder.widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,\
     LabelListWidget,LabelListWidgetItem, CropDialog, TrainWidget, DetectWidget
 from ladder.actions import baseAction
-from ladder.utils import jsonToYolo
+from ladder.utils import jsonToYolo, checkBox, checkBox_batch, checkBoxImg
 
 LABEL_COLORMAP = imgviz.label_colormap()
 # LABEL_COLORMAP = [[0,0,0],
@@ -22,8 +22,13 @@ LABEL_COLORMAP = imgviz.label_colormap()
 #                   [128,128,0],
 #                   [0,0,128]]
 
+class struct(object):
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
 class MainWindow(QtWidgets.QMainWindow):
     filename = None
+    print("start----")
     def __init__(self,filename=None,output_dir=None,output_file=None):
         super(MainWindow,self).__init__()
         self.setWindowTitle(__appname__)
@@ -75,7 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # train widget
         self.trainWidget = TrainWidget()
         self.train_dock = QtWidgets.QDockWidget(
-            self.tr("Training"), self
+            self.tr("Training Setting"), self
         )
         self.train_dock.setWidget(self.trainWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.train_dock)
@@ -83,7 +88,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Detection widget
         self.detectWidget = DetectWidget()
         self.detect_dock = QtWidgets.QDockWidget(
-            self.tr("Detecting"), self
+            self.tr("Prediction Setting"), self
         )
         self.detect_dock.setWidget(self.detectWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.detect_dock)
@@ -114,7 +119,11 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_zoom_out = QtWidgets.QToolButton()
         btn_zoom_out.setDefaultAction(zoom_out)
 
-        edit_shape = action("&Edit", "edit", self.editShape)
+        edit_shape = action(
+            "&Edit", 
+            "edit", 
+            self.editShape, 
+            )
         btn_edit_shape = QtWidgets.QToolButton()
         btn_edit_shape.setDefaultAction(edit_shape)
 
@@ -134,9 +143,15 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_del_shape = QtWidgets.QToolButton()
         btn_del_shape.setDefaultAction(del_shape)
 
-        train_file = action("&Train", "train", self.train_file_format)
+        train_file = action("&Yolo Format", "train", self.train_file_format)
         btn_train = QtWidgets.QToolButton()
         btn_train.setDefaultAction(train_file)
+
+        self.actions = struct(
+            edit_shape=edit_shape, 
+            draw_rect=draw_rect,
+            crop_img=crop_img
+            )
 
         # Top toolbar
         toolbar = QtWidgets.QToolBar()
@@ -145,11 +160,11 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.setContentsMargins(0,0,0,0)
         toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         toolbar.addWidget(btn_open_file)
-        toolbar.addWidget(btn_crop_img)
         toolbar.addWidget(btn_zoom_in)
         toolbar.addWidget(btn_zoom_out)
-        toolbar.addWidget(btn_edit_shape)
         toolbar.addWidget(btn_draw_rect)
+        toolbar.addWidget(btn_edit_shape)
+        toolbar.addWidget(btn_crop_img)
         # toolbar.addWidget(btn_next_img)
         # toolbar.addWidget(btn_pre_img)
         # toolbar.addWidget(btn_open_dir)
@@ -197,6 +212,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 # if not os.path.exists(self.trainFolder):
                 #     os.makedirs(self.trainFolder)
                 # copy2(self.filename,self.trainFolder)
+        print(f"open img {self.filename}")
 
 
     def openDir(self):
@@ -349,16 +365,49 @@ class MainWindow(QtWidgets.QMainWindow):
         return filename
 
     def saveLabels(self, filename):
-        print(filename)
+        w = self.image.width()
+        h = self.image.height()
+        print(f"start save json file {filename}")
 
         lf = LabelFile()
         #
+        def checkPoints(points, w, h):
+            # for differnt way to drone bbox
+            print(f"s.point has {len(points)} points")
+            new_box= []
+            x1 = points[0].x()
+            y1 = points[0].y()
+            x2 = points[1].x()
+            y2 = points[1].y()
+            print(f"x1 {x1}, y1 {y1}, x2 {x2}, y2 {y2}")
+
+            x1 = max(0,x1)
+            y1 = max(0,y1)
+            x2 = max(x2, 0)
+            y2 = max(y2, 0)
+            print(f"x1 {x1}, y1 {y1}, x2 {x2}, y2 {y2}")
+            box = [[x1,y1],[x2,y2]]
+
+            if x1 == x2 or y1 == y2:
+                pass
+            elif x1 < x2 and y1 < y2:
+                new_box = box
+            elif x1 > x2 and y1 > y2:
+                new_box = [[x2,y2],[x1,y1]]
+            elif x1 < x2 and y1 > y2:
+                new_box = [[x1,y2],[x2,y1]]
+            elif x1 > x2 and y1 < y2:
+                new_box = [[x2,y1],[x1,y2]]
+            return  new_box
+
+
         def format_shape(s):
             data = s.other_data.copy()
             data.update(
                 dict(
                     label= s.label,
-                    points=[(p.x(), p.y()) for p in s.points],
+                    # points=[(p.x(), p.y()) for p in s.points],
+                    points= checkPoints(points=s.points, w=w, h = h),
                     group_id=s.group_id,
                     shape_type=s.shape_type,
                     flags={},
@@ -367,6 +416,8 @@ class MainWindow(QtWidgets.QMainWindow):
             return data
 
         shapes = [format_shape(item) for item in self.canvas.shapes]
+        # shapes = [checkBoxImg(item,img=self.filename) for item in self.canvas.shapes]
+
         flags = {}
         try:
             print("%s label shapes"%(len(self.canvas.shapes)))
@@ -435,20 +486,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 item = self.labelList.findItemByShape(shape)
                 self.labelList.removeItem(item)
 
-    #
-    def labelUpdate(self):
-        if self.canvas.hShape.label:
-            previous_label = self.canvas.hShape.label
-            print("already have a label [%s] and edit" % previous_label)
-            self.labelDialog.edit.setText(previous_label)
-            text, flags, group_id = self.labelDialog.popUp()
-            if text:
-                self.canvas.hShape.label = text
-                print("update shape label to %s" % self.canvas.hShape.label)
-                self._update_shape_color(self.canvas.hShape)
-                self.labelDialog.addLabelHistory(self.canvas.hShape.label)
-                item = self.currentItem()
-                item.setText(self.canvas.hShape.label)
 
     def currentItem(self):
         items = self.labelList.selectedItems()
@@ -488,19 +525,26 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.canvas.deSelectShape()
 
-    def newShape(self):
-        flags = {}
-        group_id = None
-        text = None
-        if not text:
-            print('new shape and label')
-            previous_text = self.labelDialog.edit.text()
+    #
+    def labelUpdate(self):
+        if self.canvas.hShape.label:
+            previous_label = self.canvas.hShape.label
+            print("already have a label [%s] and edit" % previous_label)
+            self.labelDialog.edit.setText(previous_label)
             text, flags, group_id = self.labelDialog.popUp()
-            print(text)
-            print(flags)
-            print(group_id)
-            self.labelDialog.edit.setText(previous_text)
-            print("finish new shape and label")
+            if text:
+                self.canvas.hShape.label = text
+                print("update shape label to %s" % self.canvas.hShape.label)
+                self._update_shape_color(self.canvas.hShape)
+                self.labelDialog.addLabelHistory(self.canvas.hShape.label)
+                item = self.currentItem()
+                item.setText(self.canvas.hShape.label)
+
+
+    def newShape(self):
+        text, flags, group_id = self.labelDialog.popUp()
+        print(self.canvas.current)
+
         if text:
             shape = self.canvas.setLastLabel(text, flags)
             shape.group_id = group_id
@@ -508,15 +552,56 @@ class MainWindow(QtWidgets.QMainWindow):
             self.labelDialog.addLabelHistory(shape.label)
             label_list_item = LabelListWidgetItem(shape.label, shape)
             self.labelList.addItem(label_list_item)
+            print("finish new shape and label")
         else:
+            print("no label, need to cancle this new shape adding")
+            # remove the last move point
             self.canvas.undoLastLine()
             self.canvas.shapesBackups.pop()
+            # reset the first point
+            self.canvas.current = None
+            self.canvas.update()
+
+
+
+    # def newShape(self):
+    #     flags = {}
+    #     group_id = None
+    #     text = None
+    #     if not text:
+    #         print('new shape and label')
+    #         previous_text = self.labelDialog.edit.text()
+    #         text, flags, group_id = self.labelDialog.popUp()
+    #         if not text:
+    #             print(text)
+    #             print(flags)
+    #             print(group_id)
+    #             print("no label, need to cancle this new shape adding")
+
+    #         else:
+    #             self.labelDialog.edit.setText(previous_text)
+
+    #     if text:
+    #         shape = self.canvas.setLastLabel(text, flags)
+    #         shape.group_id = group_id
+    #         self._update_shape_color(shape)
+    #         self.labelDialog.addLabelHistory(shape.label)
+    #         label_list_item = LabelListWidgetItem(shape.label, shape)
+    #         self.labelList.addItem(label_list_item)
+    #         print("finish new shape and label")
+    #     else:
+    #         self.canvas.undoLastLine()
+    #         self.canvas.shapesBackups.pop()
     #<<<<<<<<<<<<<<<< shape and label >>>>>>>>>>>>>>>
 
     #<<<<<<<<<<<<<<<<crop image>>>>>>>>>>>>>>>
     def cropImg(self):
         self.canvas.mode = self.canvas.CROP
         print(self.canvas.mode)
+        self.actions.crop_img.setEnabled(False)
+        self.actions.draw_rect.setEnabled(True)
+        self.actions.edit_shape.setEnabled(True)
+
 
     def cropImgDig(self):
         msg = self.cropDialog.popUp()
@@ -533,11 +618,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def editShape(self):
         print("edit")
         self.canvas.mode = self.canvas.EDIT
+        self.actions.edit_shape.setEnabled(False)
+        self.actions.draw_rect.setEnabled(True)
+        self.actions.crop_img.setEnabled(True)
         return
 
     def drawRec(self):
         print("draw")
         self.canvas.mode = self.canvas.CREATE
+        self.actions.edit_shape.setEnabled(True)
+        self.actions.crop_img.setEnabled(True)
+        self.actions.draw_rect.setEnabled(False)
         return
 
     def nextImg(self):
@@ -557,16 +648,19 @@ class MainWindow(QtWidgets.QMainWindow):
         # if self.filename:
         #     training_data_fd = self.trainFolder
         # else:
-        try:
-            training_data_fd = QtWidgets.QFileDialog.getExistingDirectory(
-                self,
-                "Select training data folder",
-            )
-                # training_data_fd = os.path.dirname(training_data_fd)
-            print(f"training data folder is {training_data_fd}")
-
-            jsonToYolo(training_data_fd)
-            self.trainWidget.file_list.setText(os.path.join(training_data_fd,'train_data.yaml'))
-            self.detectWidget.weight_list.setText(os.path.join(training_data_fd,'weights/best.pt'))
-        except:
-            print("Errors from formate training data ")
+        # try:
+        training_data_fd = QtWidgets.QFileDialog.getExistingDirectory(
+            self,
+            "Select training data folder",
+        )
+            # training_data_fd = os.path.dirname(training_data_fd)
+        print(f"training data folder is {training_data_fd}")
+        if training_data_fd:
+            train_data_dict = jsonToYolo(training_data_fd)
+            # self.trainWidget.file_list.setText(os.path.join(training_data_fd,'train_data.yaml'))
+            # self.trainWidget.file_list.setText(train_data_dict['data_url'])
+            # self.detectWidget.weight_list.setText(os.path.join(training_data_fd,'weights/best.pt'))
+        else:
+            pass
+        # except e:
+        #     print("Errors from formate training data ")

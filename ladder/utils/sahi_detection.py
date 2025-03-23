@@ -73,6 +73,7 @@ def sliceDetect(weight,img,conf,iou,img_size,img_h,img_w,overlap,gpu):
     # SAHI sliced
     gpu = 'cuda:' + str(gpu)
     device = gpu if torch.cuda.is_available() else "cpu"
+    print(f"device is {device}")
     detection_model = AutoDetectionModel.from_pretrained(
         model_type='yolov8',
         model_path=weight,
@@ -82,6 +83,8 @@ def sliceDetect(weight,img,conf,iou,img_size,img_h,img_w,overlap,gpu):
 
     )
     # dir = os.path.dirname(img)
+    # print(f"img is {img}, image size is {img_size}, img_h is {img_h}, img_w is {img_w} \
+    #        conf is {conf}, iou is {iou}, overlap is {overlap}, gpu is {gpu}")
     result = get_sliced_prediction(
         img,
         detection_model,
@@ -119,10 +122,10 @@ def sliceDetect(weight,img,conf,iou,img_size,img_h,img_w,overlap,gpu):
 
 
 
-# if __name__ == '__main__':
-#     weight = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/wheat_seed/weights/best.pt"
-#     img = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/wheat_seed/test/BK_V19#5_S.jpg"
-#     sliceDetect(weight=weight,img=img,conf=0.1,iou=0.2,img_size=1200,img_h=2400, img_w=2400, overlap=0.4)
+if __name__ == '__main__':
+    weight = "/Users/zhou/Downloads/WSU/ladder/test/train27_7_3/weights/best.pt"
+    img = "/Users/zhou/Downloads/WSU/ladder/test/testdata_candy_bean/2019_10_12.jpg"
+    sliceDetect(weight=weight,img=img,conf=0.1,iou=0.2,img_size=600,img_h=1500, img_w=1500, overlap=0.4, gpu=1)
 
 
 

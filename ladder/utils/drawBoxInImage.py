@@ -13,7 +13,7 @@ from collections import Counter
 def drawBoxInRawImage(fd):
     files = os.listdir(fd)
     for f in files:
-        if f.endswith('json'):
+        if f.endswith('json') and not f.startswith('.'):
             img = f.split(".")[0] + ".jpg"
             out_img = f.split(".")[0] + "_boxes.jpg"
             img_url = os.path.join(fd,img)
@@ -45,5 +45,6 @@ def drawBoxInRawImage(fd):
     return
 
 if __name__ == '__main__':
-    fd = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/rice/rescan/moreVar"
+    # fd = "/Users/ZhouTang/Downloads/zzlab/1_Project/ladder/source/data/rice/rescan/moreVar"
+    fd = "/Volumes/work_Joe/archive/2024/WSU/ladder/app/Rice/result/train7_3_stage3/moreVar"
     drawBoxInRawImage(fd)
