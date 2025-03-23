@@ -13,7 +13,7 @@ from ladder.widgets import Canvas, ZoomWidget, FileDialogPreview, \
     LabelFile, Shape, LabelDialog, UniqueLabelQListWidget,\
     LabelListWidget,LabelListWidgetItem, CropDialog, TrainWidget, DetectWidget
 from ladder.actions import baseAction
-from ladder.utils import jsonToYolo, checkBox
+from ladder.utils import jsonToYolo, checkBox, checkBox_batch, checkBoxImg
 
 LABEL_COLORMAP = imgviz.label_colormap()
 # LABEL_COLORMAP = [[0,0,0],
@@ -212,6 +212,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 # if not os.path.exists(self.trainFolder):
                 #     os.makedirs(self.trainFolder)
                 # copy2(self.filename,self.trainFolder)
+        print(f"open img {self.filename}")
 
 
     def openDir(self):
@@ -364,16 +365,49 @@ class MainWindow(QtWidgets.QMainWindow):
         return filename
 
     def saveLabels(self, filename):
-        print(filename)
+        w = self.image.width()
+        h = self.image.height()
+        print(f"start save json file {filename}")
 
         lf = LabelFile()
         #
+        def checkPoints(points, w, h):
+            # for differnt way to drone bbox
+            print(f"s.point has {len(points)} points")
+            new_box= []
+            x1 = points[0].x()
+            y1 = points[0].y()
+            x2 = points[1].x()
+            y2 = points[1].y()
+            print(f"x1 {x1}, y1 {y1}, x2 {x2}, y2 {y2}")
+
+            x1 = max(0,x1)
+            y1 = max(0,y1)
+            x2 = max(x2, 0)
+            y2 = max(y2, 0)
+            print(f"x1 {x1}, y1 {y1}, x2 {x2}, y2 {y2}")
+            box = [[x1,y1],[x2,y2]]
+
+            if x1 == x2 or y1 == y2:
+                pass
+            elif x1 < x2 and y1 < y2:
+                new_box = box
+            elif x1 > x2 and y1 > y2:
+                new_box = [[x2,y2],[x1,y1]]
+            elif x1 < x2 and y1 > y2:
+                new_box = [[x1,y2],[x2,y1]]
+            elif x1 > x2 and y1 < y2:
+                new_box = [[x2,y1],[x1,y2]]
+            return  new_box
+
+
         def format_shape(s):
             data = s.other_data.copy()
             data.update(
                 dict(
                     label= s.label,
-                    points=[(p.x(), p.y()) for p in s.points],
+                    # points=[(p.x(), p.y()) for p in s.points],
+                    points= checkPoints(points=s.points, w=w, h = h),
                     group_id=s.group_id,
                     shape_type=s.shape_type,
                     flags={},
@@ -382,7 +416,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return data
 
         shapes = [format_shape(item) for item in self.canvas.shapes]
-        # shapes = [checkBox(item) for item in self.canvas.shapes]
+        # shapes = [checkBoxImg(item,img=self.filename) for item in self.canvas.shapes]
 
         flags = {}
         try:
