@@ -2,16 +2,19 @@
 This is a software that allow users to label image, train YOLO, and detect images in single GUI. Here are main functions in Ladder. 
 
 ## Introduction of main functions
+
+### Label images with bboxes
+- Draw rectangle and add lables
+- Adjust size, label and postion of rectangles
+- save shapes and labels into a JSON file
+- reload the JSON file into the Ladder
+
+### Training with labeled data
+- Currently support YOLO model set from the ultralytics (https://www.ultralytics.com/)
+
 ### Prediction or detection
-![detection](./docImg/detection.gif)
+- use the SAHI algrithom to improve small object detection accuray, here is the link for SAHI (https://github.com/obss/sahi)
 
-### Adjust size, label and postion of rectangles
-![adjust](./docImg/adjust.gif)
-
-### Draw rectangle and add lables
-![add a new rectangels](./docImg/addbox.gif)
-
-### save shapes and labels into a JSON file; reload the JSON file into the Ladder
 
 
 ## Installation
