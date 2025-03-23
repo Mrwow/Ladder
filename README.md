@@ -49,7 +49,9 @@ pip install ultralytics==8.2.39 albumentations==1.4.10 torch==1.13.1 torchvision
 ```
 
 ### Step 3: Install the Ladder
-Finally, you can install the ladder in your computer.I recommond use `develop` mode during the installation where Ladder is not actually installed in your computer. Each time you download the new version of Ladder, just replace with new code in the older and can go to step 4 directly.
+
+You need first download the code and unzip it. Then `cd ladder` and Finally, you can install the ladder in your computer.I recommond use `develop` mode during the installation where Ladder is not actually installed in your computer. Each time you download the new version of Ladder, just replace with new code in the older and can go to step 4 directly.
+
 ```
 python setup.py develop
 ```
@@ -62,8 +64,8 @@ if you want to delete it, please use this command below
 pip uninstall ladder
 ```
 
-### Step 4: Launching the Ladder
-
+### Step 4: Launch the Ladder
+Please 
 ```
 python -m ladder
 ```
