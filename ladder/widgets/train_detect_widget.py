@@ -97,14 +97,14 @@ class TrainWidget(QtWidgets.QWidget):
         # change settings
         runs_dir = os.path.dirname(self.file_list.text())
 
-        settings.update({
-            'runs_dir': runs_dir
-        })
-        results = model.train(data=data, epochs=epochs,imgsz=imgsz)
+        # settings.update({
+        #     'runs_dir': runs_dir
+        # })
+        results = model.train(data=data, epochs=epochs,imgsz=imgsz, save_dir=runs_dir)
         train_output_dir = os.path.dirname(os.path.dirname(weight))
         weight_path = os.path.join(runs_dir,'detect/train/weights')
         print("=================================")
-        print(f'runss_dir is {runs_dir}')
+        print(f"try to save in the run_dir {runs_dir}")
         print(f'train_output_dir is {train_output_dir}')
         print(f'weight_path is {weight_path}')
         print("=================================")
