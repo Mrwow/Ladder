@@ -70,5 +70,17 @@ each time before launch the Ladder, please remember to activate the python envir
 ```
 conda activate py3819 
 ```
+### How to cite this work
 
+```
+@misc{tang2023laddersoftwarelabelimages,
+      title={Ladder: A software to label images, detect objects and deploy models recurrently for object detection}, 
+      author={Zhou Tang and Zhiwu Zhang},
+      year={2023},
+      eprint={2306.10372},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2306.10372}, 
+}
+```
 
