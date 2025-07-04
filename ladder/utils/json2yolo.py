@@ -90,7 +90,7 @@ from .checkJson import checkBox_batch
 
 def jsonToYolo(input_path):
     image_labeled = len(glob.glob(os.path.join(input_path, "*.json")))
-    print(image_labeled)
+    print(f'total {image_labeled} images have json file')
     checkBox_batch(input_path)
     if image_labeled <=10:
         jsonToYoloSameTrainTest(input_path=input_path)
@@ -116,7 +116,7 @@ def jsonToYoloSameTrainTest(input_path):
 
             imagePath = os.path.join(input_path,imagePath)
             copy2(imagePath,image_output_path)
-            print(f"img is {f}")
+            # print(f"img is {f}")
 
             # create txt file for yolo
             img = os.path.basename(f)
@@ -124,7 +124,7 @@ def jsonToYoloSameTrainTest(input_path):
             img_json_url = os.path.join(input_path,img_json)
 
             if os.path.exists(img_json_url):
-                print(f"json is {img_json}")
+                print(f"{img} labeled json {img_json} is converted to a yolo txt")
                 try:
                     with open(img_json_url, "r") as f:
                         data = json.load(f)
@@ -149,7 +149,7 @@ def jsonToYoloSameTrainTest(input_path):
                 with open(label_name,'w') as f:
                     for s in shapes:
                         label_list.append(s["label"]) if s["label"] not in label_list else label_list
-                        print(label_list)
+                        # print(label_list)
                         label_index = label_list.index(s["label"])
                         x1,y1, x2, y2=s["points"][0][0],s["points"][0][1],s["points"][1][0],s["points"][1][1]
                         w = (x2-x1)/img_w
@@ -158,7 +158,7 @@ def jsonToYoloSameTrainTest(input_path):
                         y = (y1 + y2)/(2*img_h)
                         f.write(f'{label_index} {x:.6f} {y:.6f} {w:.6f} {h:.6f}\n')
             else:
-                print("create a empty txt file")
+                print(f"create a empty txt file for {img}")
                 # label files folder
                 label_name = img_json.replace('json','txt')
                 labels_output_path = os.path.join(input_path,"train/labels/")
