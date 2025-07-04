@@ -45,17 +45,12 @@ conda install -c conda-forge pyside2
 ```
 - For deep learning
 ```
-pip install ultralytics==8.2.39 albumentations==1.4.10 torch==1.13.1 torchvision==0.14.1 tensorboard==2.14.0 sahi==0.11.16 albucore==0.0.12
+pip install ultralytics==8.3.160 albumentations==1.4.10 torch==1.13.1 torchvision==0.14.1 tensorboard==2.14.0 sahi==0.11.16 albucore==0.0.12
 ```
 
 ### Step 3: Install the Ladder
 
 You need first download the code and unzip it. Then use `cd ladder` to change the foler. Finally, you can install the ladder in your computer.I recommond use `develop` mode during the installation where Ladder is not actually installed in your computer. Each time you download the new version of Ladder, just replace with new code in the older and can go to step 4 directly.
-
-```
-python setup.py develop
-```
-or if you don't care, please use this command below
 ```
 python setup.py install
 ```
@@ -68,6 +63,12 @@ pip uninstall ladder
 Please use this
 ```
 python -m ladder
+```
+
+### please pay attention
+each time before launch the Ladder, please remember to activate the python enviroment where you install Ladder 
+```
+conda activate py3819 
 ```
 
 
