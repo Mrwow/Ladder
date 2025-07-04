@@ -65,7 +65,7 @@ Please use this
 python -m ladder
 ```
 
-### please pay attention
+### Please pay attention
 each time before launch the Ladder, please remember to activate the python enviroment where you install Ladder 
 ```
 conda activate py3819 
