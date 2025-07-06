@@ -63,7 +63,7 @@ def sliceDetectBatch(weight,img_fd,conf,iou,img_size,img_h,img_w,overlap,gpu):
     imgs = os.listdir(img_fd)
     for img in imgs:
         print(img)
-        if not img.startswith(".") and img.split(".")[1] in ['png', 'jpg', 'JPG', 'jepg', 'JEPG']:
+        if not img.startswith(".") and img.split(".")[1] in ['png', 'jpg', 'JPG', 'jepg', 'JEPG', 'jpeg']:
             img_url = os.path.join(img_fd,img)
             sliceDetect(weight=weight,img=img_url,conf=conf,iou=iou,
                         img_size=img_size,img_h=img_h,img_w=img_w,overlap=overlap,gpu=gpu)

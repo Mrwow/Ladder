@@ -7,7 +7,7 @@ def checkBox(box, w, h):
     """
     box: [[x1,y1],[x2,y2]]
     """
-    print(f"box is {box}")
+    # print(f"box is {box}")
     if len(box) == 2 : 
         x1 = box[0][0]
         y1 = box[0][1]
@@ -56,7 +56,7 @@ def checkBox(box, w, h):
             new_box = [[x2,y1],[x1,y2]]
     else:
         pass
-    print(f"new box is {new_box}")
+    # print(f"new box is {new_box}")
     return new_box
 
 def checkBoxImg(box, img):
@@ -71,7 +71,7 @@ def checkBoxImg(box, img):
 def checkBox_batch(fd):
     for f in os.listdir(fd):
         if f.endswith(".json") and not f.startswith("."):
-            print(f)
+            # print(f)
             json_url = os.path.join(fd, f)
             with open(json_url, "r") as f_json:
                 data = json.load(f_json)
@@ -80,7 +80,7 @@ def checkBox_batch(fd):
 
             for shape in data["shapes"]:
                 box = shape["points"]
-                print(box)
+                # print(box)
                 shape["points"] = checkBox(box=box,w=w,h=h)
             
             with open(json_url,'w') as outfile:

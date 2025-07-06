@@ -1,9 +1,9 @@
 import os
 import shutil
 from qtpy import QtWidgets, QtGui
+from qtpy.QtWidgets import QFileDialog
 from ultralytics import YOLO, settings
-from ladder.utils import coco2json, ultraResult2Json, sliceDetect, sliceDetectBatch
-
+from ladder.utils import coco2json, ultraResult2Json, sliceDetect, sliceDetectBatch, jsonToYolo
 
 def copy_folder_with_unique_name(src_folder, dest_folder):
     # Ensure the source folder exists
@@ -24,6 +24,56 @@ def copy_folder_with_unique_name(src_folder, dest_folder):
     # Copy the folder
     shutil.copytree(src_folder, new_folder_path)
     print(f"Copied '{src_folder}' to '{new_folder_path}'.")
+
+def clean_weights_folder(exp_dir):
+    """
+    Move all files from sibling 'weight' folder into 'weights_path',
+    keep only 'confusion_matrix.png' and 'confusion_matrix_normalized.png',
+    and delete all other files in 'weights_path'.
+
+    Parameters:
+        weights_path (str): Path to the 'weights' directory.
+    """
+    weight_path = os.path.join(exp_dir, "weights")
+
+    # Make sure both directories exist
+    if not os.path.exists(exp_dir):
+        os.makedirs(exp_dir)
+    if not os.path.exists(weight_path):
+        print(f"No 'weights' folder found at: {weight_path}")
+        return
+
+    # Move all files from 'weight' to 'weights'
+    for file_name in os.listdir(weight_path):
+        src_file = os.path.join(weight_path, file_name)
+        dst_file = os.path.join(exp_dir, file_name)
+
+        if os.path.isfile(src_file):
+            print(f'weight file {src_file} found will move to {dst_file}')
+            shutil.move(src_file, dst_file)
+
+    # Define files to keep
+    keep_files = {
+        "confusion_matrix.png",
+        "confusion_matrix_normalized.png",
+        "last.pt",
+        "best.pt"
+    }
+
+    # Remove all other files in 'weights'
+    for file_name in os.listdir(exp_dir):
+        file_path = os.path.join(exp_dir, file_name)
+        if os.path.isfile(file_path) and file_name not in keep_files:
+            os.remove(file_path)
+
+    # Optionally remove the now-empty 'weight' folder
+    try:
+        os.rmdir(weight_path)
+    except OSError:
+        pass  # Folder not empty or error, skip
+
+    print(f"'weights' folder cleaned successfully at: {exp_dir}")
+
 
 class TrainWidget(QtWidgets.QWidget):
 
@@ -49,7 +99,8 @@ class TrainWidget(QtWidgets.QWidget):
         self.trainBtn.clicked.connect(self.get_para)
 
         directDialog = QtWidgets.QPushButton("Browse data")
-        directDialog.clicked.connect(self.open_file_dialog)
+        # directDialog.clicked.connect(self.open_file_dialog)
+        directDialog.clicked.connect(self.open_json_folder)
         self.file_list = QtWidgets.QLineEdit()
         weightDialog = QtWidgets.QPushButton("Browse weight")
         weightDialog.clicked.connect(self.open_weight_dialog)
@@ -80,12 +131,18 @@ class TrainWidget(QtWidgets.QWidget):
         # model = self.modelSelectBox.currentText()
         data = self.file_list.text()
         weight = self.weight_list.text()
-        if data and weight:
-            self.yolov8Train(data=data,weight=weight,epochs=epoch,imgsz=imgsz, keep_mid=False)
-        else:
+        try:
+            train_data_dict = jsonToYolo(data)
+            data_yaml = os.path.join(data,"train","train_data.yaml")
+            train_save_dir = os.path.join(data,"train")
+            # self.yolov8Train(data=data,weight=weight,epochs=epoch,imgsz=imgsz, keep_mid=False) # for yolov8n
+            self.yolov11Train(data=data_yaml,weight_path=weight,save_dir=train_save_dir, epochs=epoch,imgsz=imgsz) # for yolov11
+        except OSError:
             print("please select training data or weight file")
 
+
     def yolov8Train(self, data, weight, epochs, imgsz, model="yolov8n", keep_mid=True):
+        print("========================start train with YOLOv8n========================")
         # train
         if not weight:
             # weight = model.split(",")[0] + ".pt"
@@ -114,7 +171,22 @@ class TrainWidget(QtWidgets.QWidget):
             if not keep_mid:
                 shutil.rmtree(os.path.join(runs_dir,'detect'))
         except Exception as e:
-            print(f"Error: {e}") 
+            print(f"Error: {e}")
+    
+    def yolov11Train(self, data, weight_path, epochs, imgsz, save_dir, model="yolo11n"):
+        # train
+        print("========================start train with YOLO11n========================")
+        if not weight_path:
+            model = YOLO(model)
+        else:
+            model = YOLO(weight_path)
+
+        results = model.train(data=data, epochs=epochs,imgsz=imgsz, project=save_dir, name="exp")
+        results_out_dir = results.save_dir
+        try:
+            clean_weights_folder(results_out_dir)
+        except Exception as e:
+            print(f"Error: {e}")
 
 
     def open_file_dialog(self):
@@ -130,6 +202,11 @@ class TrainWidget(QtWidgets.QWidget):
                 # dir_path = os.path.dirname(file)
                 dir_path = file
                 self.file_list.setText(str(dir_path))
+
+    def open_json_folder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder_path:
+             self.file_list.setText(str(folder_path))
 
 
     def open_weight_dialog(self):
@@ -176,7 +253,8 @@ class DetectWidget(QtWidgets.QWidget):
         self.detectBtn.clicked.connect(self.star_detect)
 
         folderDialog = QtWidgets.QPushButton("Select Folder")
-        folderDialog.clicked.connect(self.open_folder_dialog)
+        # folderDialog.clicked.connect(self.open_folder_dialog)
+        folderDialog.clicked.connect(self.open_image_folder)
         self.folder_list = QtWidgets.QLineEdit()
 
         fileDialog = QtWidgets.QPushButton("Select Image")
@@ -192,9 +270,9 @@ class DetectWidget(QtWidgets.QWidget):
         layout.addWidget(folderDialog,0,1)
         layout.addWidget(self.folder_list,1,0,1,2)
 
-        layout.addWidget(QtWidgets.QLabel('Selected Image:'),2,0)
-        layout.addWidget(fileDialog,2,1)
-        layout.addWidget(self.file_list,3,0,1,2)
+        # layout.addWidget(QtWidgets.QLabel('Selected Image:'),2,0)
+        # layout.addWidget(fileDialog,2,1)
+        # layout.addWidget(self.file_list,3,0,1,2)
 
         layout.addWidget(QtWidgets.QLabel('Selected Weight:'),4,0)
         layout.addWidget(weightDialog,4,1)
@@ -242,6 +320,12 @@ class DetectWidget(QtWidgets.QWidget):
                 # self.file_list.setText(str(file))# for single image detection
                 self.folder_list.setText(str(self.path)) # for multiple images detection
 
+    def open_image_folder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        if folder_path:
+            self.path = str(folder_path)
+            self.folder_list.setText(str(self.path))
+
     def open_weight_dialog(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self,
@@ -287,13 +371,10 @@ class DetectWidget(QtWidgets.QWidget):
         else:
             print("standard detection in a whole image!")
             if data:
-                self.yolov8Detect(
-                    model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False
-                )
-            else:
-                self.yolov8Detect(
-                    model= model, data=self.singleImg,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False
-                )
+                # self.yolov8Detect(model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False)#yolov8
+                sefl.yolo11Detect(model= model, data=data,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False)
+            # else:
+                # self.yolov8Detect(model= model, data=self.singleImg,weight=weight,imgsz=imgsz, conf=conf,iou=iou,keep_mid=False)#yolov8
 
     def yolov8Detect(self, model, data, weight, imgsz, conf, iou, keep_mid=True):
         # predict
@@ -309,6 +390,31 @@ class DetectWidget(QtWidgets.QWidget):
             'runs_dir': runs_dir
         })
         print(settings)
+
+        results = model.predict(data, save=True, save_conf=True, save_txt=True,
+                                imgsz=imgsz, conf=conf, iou=iou)
+
+        ultraResult2Json(results=results)
+
+        if not keep_mid:
+            shutil.rmtree(os.path.join(runs_dir,'detect'))
+        return results
+
+
+    def yolo11Detect(self, model, data, weight, imgsz, conf, iou, keep_mid=True):
+        # predict
+        if not weight:
+            weight = model.split(",")[0] + ".pt"
+            model = YOLO(weight)
+        else:
+            model = YOLO(weight)
+
+        # changing settings
+        # runs_dir = os.path.dirname(self.file_list.text())
+        # settings.update({
+        #     'runs_dir': runs_dir
+        # })
+        # print(settings)
 
         results = model.predict(data, save=True, save_conf=True, save_txt=True,
                                 imgsz=imgsz, conf=conf, iou=iou)

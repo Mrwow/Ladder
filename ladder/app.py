@@ -28,7 +28,7 @@ class struct(object):
 
 class MainWindow(QtWidgets.QMainWindow):
     filename = None
-    print("start----")
+    print("start--")
     def __init__(self,filename=None,output_dir=None,output_file=None):
         super(MainWindow,self).__init__()
         self.setWindowTitle(__appname__)
@@ -75,6 +75,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.shape_dock.setObjectName("Labels")
         self.shape_dock.setWidget(self.labelList)
+        self.shape_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.shape_dock)
 
         # train widget
@@ -83,6 +84,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Training Setting"), self
         )
         self.train_dock.setWidget(self.trainWidget)
+        self.train_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(Qt.RightDockWidgetArea, self.train_dock)
 
         # Detection widget
@@ -91,6 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Prediction Setting"), self
         )
         self.detect_dock.setWidget(self.detectWidget)
+        self.detect_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(Qt.RightDockWidgetArea, self.detect_dock)
 
         # Top toolbar button actions
@@ -147,6 +150,10 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_train = QtWidgets.QToolButton()
         btn_train.setDefaultAction(train_file)
 
+        resetParas = action("&Reset", "reset", self.resetTrainDetectParas)
+        btn_reset = QtWidgets.QToolButton()
+        btn_reset.setDefaultAction(resetParas)
+
         self.actions = struct(
             edit_shape=edit_shape, 
             draw_rect=draw_rect,
@@ -171,7 +178,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # toolbar.addWidget(btn_detect)
         toolbar.addWidget(btn_save_file)
         toolbar.addWidget(btn_del_shape)
-        toolbar.addWidget(btn_train)
+        # toolbar.addWidget(btn_train)
+        toolbar.addWidget(btn_reset)
         self.addToolBar(Qt.TopToolBarArea,toolbar)
 
 
@@ -314,19 +322,38 @@ class MainWindow(QtWidgets.QMainWindow):
 
     #<<<<<<<<<<<<<<<<save file>>>>>>>>>>>>>>>
     def saveFile(self, _value=False):
-        # assert not self.image.isNull(), "cannot save empty image"
-        if self.labelFile:
-            # overwrite when in directory
-            self._saveFile(self.labelFile.filename)
-        elif self.output_file:
-            self._saveFile(self.output_file)
-            self.close()
-        else:
-            self._saveFile(self.saveFileDialog())
+        print(f"shape length is {len(self.canvas.shapes)}")
+        try:
+            if len(self.canvas.shapes) < 1:
+                print("cannot save empty json")
+                return
+            # else:
+            #     basename = os.path.basename(os.path.splitext(self.filename)[0])
+            #     default_labelfile_name = os.path.join(self.currentPath(), basename + LabelFile.suffix)
+            #     print(default_labelfile_name)
+            #     self.saveFile(default_labelfile_name)
+            #     print(f"save {len(self.canvas.shapes)} shapes to the {default_labelfile_name}")
+
+            if self.labelFile:
+                # overwrite when in directory
+                self._saveFile(self.labelFile.filename)
+            elif self.output_file:
+                self._saveFile(self.output_file)
+                self.close()
+            else:
+                basename = os.path.basename(os.path.splitext(self.filename)[0])
+                default_labelfile_name = os.path.join(self.currentPath(), basename + LabelFile.suffix)
+                print(default_labelfile_name) 
+                self._saveFile(default_labelfile_name)
+
+        except Exception as e:
+            print(f"Error: {e}")
+            pass
 
     def _saveFile(self, filename):
         if filename and self.saveLabels(filename):
-            print("finish save")
+            pass
+            # print(f"label file will save to {filename}")
             # self.addRecentFile(filename)
             # self.setClean()
 
@@ -642,6 +669,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def moveShape(self):
         self.canvas.endMove(copy=False)
         self.setDirty()
+
+    def resetTrainDetectParas(self):
+        self.trainWidget.imgSize.setText("600")
+        self.trainWidget.epoch.setText("100")
+        self.detectWidget.imgSize.setText("600")
+        self.detectWidget.iou.setText("0.6")
+        self.detectWidget.conf.setText("0.25")
+        self.detectWidget.overlap.setText("0.25")
+        self.detectWidget.slice.setText("1000")
+        # print("reset the parameters in the train and detection")
+
 
     def train_file_format(self):
         print(self.filename)
