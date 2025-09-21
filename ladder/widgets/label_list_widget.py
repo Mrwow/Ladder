@@ -10,8 +10,8 @@ class LabelListWidgetItem(QtGui.QStandardItem):
         self.setText(text or "")
         self.setShape(shape)
 
-        self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        # self.setCheckable(True)
+        # self.setCheckState(Qt.Checked)
         self.setEditable(False)
         self.setTextAlignment(Qt.AlignBottom)
 
@@ -62,15 +62,24 @@ class LabelListWidget(QtWidgets.QListView):
             self.itemSelectionChangedEvent
         )
 
+
     def __len__(self):
         return self.model().rowCount()
 
+    # def __getitem__(self, i):
+    #     return self.model().item(i)
+    # def __iter__(self):
+    #     for i in range(len(self)):
+    #         yield self[i]
+
     def __getitem__(self, i):
-        return self.model().item(i)
+        return self.model().item(i, 0)
 
     def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
+        for row in range(self.model().rowCount()):
+            yield self.model().item(row, 0)
+
+
 
     @property
     def itemDropped(self):
@@ -118,3 +127,4 @@ class LabelListWidget(QtWidgets.QListView):
 
     def clear(self):
         self.model().clear()
+

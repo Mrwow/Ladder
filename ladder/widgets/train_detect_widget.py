@@ -133,13 +133,13 @@ class TrainWidget(QtWidgets.QWidget):
         weight = self.weight_list.text()
         try:
             train_data_dict = jsonToYolo(data)
-            data_yaml = os.path.join(data,"train","train_data.yaml")
+            data_yaml = os.path.join(data,"yolo","yolo_train_config.yaml")
             train_save_dir = os.path.join(data,"train")
             # self.yolov8Train(data=data,weight=weight,epochs=epoch,imgsz=imgsz, keep_mid=False) # for yolov8n
             self.yolov11Train(data=data_yaml,weight_path=weight,save_dir=train_save_dir, epochs=epoch,imgsz=imgsz) # for yolov11
         except OSError:
             print("please select training data or weight file")
-
+ 
 
     def yolov8Train(self, data, weight, epochs, imgsz, model="yolov8n", keep_mid=True):
         print("========================start train with YOLOv8n========================")
