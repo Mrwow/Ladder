@@ -4,6 +4,7 @@ import os
 import math
 import imgviz
 from shutil import copy2
+from collections import Counter
 
 from qtpy import QtWidgets, QtCore, QtGui
 from qtpy.QtCore import Qt
@@ -25,6 +26,8 @@ LABEL_COLORMAP = imgviz.label_colormap()
 class struct(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+
 
 class MainWindow(QtWidgets.QMainWindow):
     filename = None
@@ -64,8 +67,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.labelDialog = LabelDialog(parent=self)
         self.cropDialog = CropDialog(parent=self)
 
-        # uniqul labelList
-        self.uniqLabelList = UniqueLabelQListWidget()
+        # --- Summary (left dock) ---
+        # self.summary_widget = SummaryWidget(self, title="Summary")   # optional title
+        # self.summary_widget.setMinimumWidth(260)                     # comfy default
+
+        # self.sum_dock = QtWidgets.QDockWidget(self.tr("Labels Summary"), self)
+        # self.sum_dock.setObjectName("dock_labels_summary")           # good for saving/restoring state
+        # self.sum_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+
+        # # Choose dock behavior you prefer:
+        # #  - Movable + Closable (recommended)
+        # # self.sum_dock.setFeatures(
+        # #     QtWidgets.QDockWidget.DockWidgetMovable
+        # #     | QtWidgets.QDockWidget.DockWidgetClosable
+        # # )
+        # # fixed with no close/move:
+        # self.sum_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
+
+        # self.sum_dock.setWidget(self.summary_widget)
+        # self.addDockWidget(Qt.LeftDockWidgetArea, self.sum_dock)
 
         # polygon label list
         self.labelList = LabelListWidget()
@@ -73,10 +93,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.shape_dock = QtWidgets.QDockWidget(
             self.tr("Labels List"), self
         )
+        # print(f'===={self.labelList.}=====')
         self.shape_dock.setObjectName("Labels")
         self.shape_dock.setWidget(self.labelList)
         self.shape_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.shape_dock)
+
+        # uniq label list for hold on
+        self.uniqLabelList = UniqueLabelQListWidget()
+        self.uniqLabelList.itemDoubleClicked.connect(self._on_unique_label_activate)
+        self.uniqLabelList_dock = QtWidgets.QDockWidget(
+            self.tr("Unique Labels"), self
+        )
+        self.uniqLabelList_dock.setWidget(self.uniqLabelList)
+        self.uniqLabelList_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.uniqLabelList_dock)
 
         # train widget
         self.trainWidget = TrainWidget()
@@ -199,6 +230,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "*.{}".format(fmt.data().decode())
             for fmt in QtGui.QImageReader.supportedImageFormats()
         ]
+
         filters = self.tr("Image & Label files (%s)") % " ".join(
             formats
         )
@@ -297,6 +329,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.setEnabled(True)
         self.zoomValueInitial()
         self.canvas.update()
+        self._refresh_unique_label_counts()
     #<<<<<<<<<<<<<<<<open file>>>>>>>>>>>>>>>
 
     #<<<<<<<<<<<<<<<< zoom >>>>>>>>>>>>>>>
@@ -512,7 +545,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for shape in shapes:
                 item = self.labelList.findItemByShape(shape)
                 self.labelList.removeItem(item)
-
+                self._refresh_unique_label_counts()
 
     def currentItem(self):
         items = self.labelList.selectedItems()
@@ -529,16 +562,145 @@ class MainWindow(QtWidgets.QMainWindow):
         shape.select_line_color = QtGui.QColor(255, 255, 255)
         shape.select_fill_color = QtGui.QColor(r, g, b, 155)
 
+    # Put this inside your App class (replacing the existing _get_rgb_by_label)
     def _get_rgb_by_label(self, label):
+        """
+        Ensure the unique-list item exists for `label`, compute its color from row index,
+        and ALWAYS refresh its displayed count using the current LabelListWidget contents.
+        Returns (r, g, b).
+        """
+        # 1) Ensure the unique item exists (no recursion!)
         item = self.uniqLabelList.findItemByLabel(label)
-        # print(item)
         if item is None:
             item = self.uniqLabelList.createItemFromLabel(label)
             self.uniqLabelList.addItem(item)
-            rgb = self._get_rgb_by_label(label)
-            self.uniqLabelList.setItemLabel(item, label, rgb)
+
+        # 2) Compute the color from its position
         label_id = self.uniqLabelList.indexFromItem(item).row() + 1
-        return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
+        r, g, b = LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
+
+        # 3) Compute the current count of this label from the shape list model
+        count = 0
+        root = self.labelList.model().invisibleRootItem()
+        for rrow in range(root.rowCount()):
+            it = root.child(rrow, 0)
+            if it is None:
+                continue
+            # You can also use getattr(it.shape(), "label", None) if you prefer
+            shape = it.data(Qt.UserRole)
+            lab = getattr(shape, "label", None) or it.text()
+            if lab == label:
+                count += 1
+
+        # 4) Update the unique item’s visible text with count
+        #    (setItemLabel expects (item, label, color_tuple, count))
+        self.uniqLabelList.setItemLabel(item, label, (r, g, b), count)
+
+        return (r, g, b)
+
+
+
+    # def _get_rgb_by_label(self, label):
+    #     all_items = list(self.labelList)
+    #     print(f"here is all current labels item: {all_items}") 
+    #     item = self.uniqLabelList.findItemByLabel(label)
+    #     # print(item)
+    #     if item is None:
+    #         item = self.uniqLabelList.createItemFromLabel(label)
+    #         self.uniqLabelList.addItem(item)
+    #         rgb = self._get_rgb_by_label(label)
+    #         self.uniqLabelList.setItemLabel(item, label, rgb)
+    #     label_id = self.uniqLabelList.indexFromItem(item).row() + 1
+    #     return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
+
+    # Also inside your App class
+    def _refresh_unique_label_counts(self):
+        """Recompute and refresh the counts for every item in the unique label list."""
+        # Tally counts from the per-shape list
+        
+        counts = Counter()
+        root = self.labelList.model().invisibleRootItem()
+        for rrow in range(root.rowCount()):
+            it = root.child(rrow, 0)
+            if it is None:
+                continue
+            shape = it.data(Qt.UserRole)
+            lab = getattr(shape, "label", None) or it.text()
+            if lab:
+                counts[lab] += 1
+
+        # Update every unique item’s label text (color by its row)
+        for row in range(self.uniqLabelList.count()):
+            uitem = self.uniqLabelList.item(row)
+            label = uitem.data(Qt.UserRole)
+            r, g, b = LABEL_COLORMAP[(row + 1) % len(LABEL_COLORMAP)]
+            self.uniqLabelList.setItemLabel(uitem, label, (r, g, b), counts.get(label, 0))
+
+
+    def _on_unique_label_activate(self, uitem):
+        old_label = uitem.data(Qt.UserRole)
+        if not old_label:
+            return
+
+        new_label, ok = QtWidgets.QInputDialog.getText(
+            self, "Rename label", f"Rename '{old_label}' to:"
+        )
+        if not ok:
+            return
+
+        new_label = new_label.strip()
+        if not new_label or new_label == old_label:
+            return
+
+        self._rename_label_globally(old_label, new_label)
+
+
+    def _rename_label_globally(self, old_label: str, new_label: str):
+        """
+        Rename all shapes that use `old_label` to `new_label`.
+        Updates labelList items, underlying shape objects (if they have .label),
+        and keeps the unique label list consistent (merging if needed).
+        """
+        # 1) Rename in the per-shape list (LabelListWidget)
+        root = self.labelList.model().invisibleRootItem()
+        renamed_count = 0
+        for r in range(root.rowCount()):
+            it = root.child(r, 0)
+            if it is None:
+                continue
+            shape = it.data(Qt.UserRole)
+            # authoritative label comes from shape if available
+            lab = getattr(shape, "label", None) or it.text()
+            if lab == old_label:
+                # update underlying shape object (if present)
+                if shape is not None and hasattr(shape, "label"):
+                    setattr(shape, "label", new_label)
+                # update visible text of the list item
+                it.setText(new_label)
+                renamed_count += 1
+
+        if renamed_count == 0:
+            # Nothing matched; still make sure the unique list is sane
+            self._refresh_unique_label_counts()
+            return
+
+        # 2) Update the unique labels list
+        # If a unique item for the new label already exists, we will MERGE
+        u_old = self.uniqLabelList.findItemByLabel(old_label)
+        u_new = self.uniqLabelList.findItemByLabel(new_label)
+
+        if u_new is None and u_old is not None:
+            # Retitle the old unique item to the new label
+            u_old.setData(Qt.UserRole, new_label)
+        elif u_new is not None and u_old is not None and u_new is not u_old:
+            # Merge: remove the old unique item; the counts will be recomputed anyway
+            idx = self.uniqLabelList.row(u_old)
+            self.uniqLabelList.takeItem(idx)
+            u_old = None
+
+        # 3) Recompute counts & redraw unique labels
+        self._refresh_unique_label_counts()
+
 
     def labelSelectionChanged(self):
         if self._noSelectionSlot:
@@ -566,6 +728,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.labelDialog.addLabelHistory(self.canvas.hShape.label)
                 item = self.currentItem()
                 item.setText(self.canvas.hShape.label)
+                self._refresh_unique_label_counts()
 
 
     def newShape(self):
@@ -589,36 +752,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.canvas.current = None
             self.canvas.update()
 
-
-
-    # def newShape(self):
-    #     flags = {}
-    #     group_id = None
-    #     text = None
-    #     if not text:
-    #         print('new shape and label')
-    #         previous_text = self.labelDialog.edit.text()
-    #         text, flags, group_id = self.labelDialog.popUp()
-    #         if not text:
-    #             print(text)
-    #             print(flags)
-    #             print(group_id)
-    #             print("no label, need to cancle this new shape adding")
-
-    #         else:
-    #             self.labelDialog.edit.setText(previous_text)
-
-    #     if text:
-    #         shape = self.canvas.setLastLabel(text, flags)
-    #         shape.group_id = group_id
-    #         self._update_shape_color(shape)
-    #         self.labelDialog.addLabelHistory(shape.label)
-    #         label_list_item = LabelListWidgetItem(shape.label, shape)
-    #         self.labelList.addItem(label_list_item)
-    #         print("finish new shape and label")
-    #     else:
-    #         self.canvas.undoLastLine()
-    #         self.canvas.shapesBackups.pop()
     #<<<<<<<<<<<<<<<< shape and label >>>>>>>>>>>>>>>
 
     #<<<<<<<<<<<<<<<<crop image>>>>>>>>>>>>>>>
@@ -683,22 +816,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def train_file_format(self):
         print(self.filename)
-        # if self.filename:
-        #     training_data_fd = self.trainFolder
-        # else:
-        # try:
         training_data_fd = QtWidgets.QFileDialog.getExistingDirectory(
             self,
             "Select training data folder",
         )
-            # training_data_fd = os.path.dirname(training_data_fd)
         print(f"training data folder is {training_data_fd}")
         if training_data_fd:
             train_data_dict = jsonToYolo(training_data_fd)
-            # self.trainWidget.file_list.setText(os.path.join(training_data_fd,'train_data.yaml'))
-            # self.trainWidget.file_list.setText(train_data_dict['data_url'])
-            # self.detectWidget.weight_list.setText(os.path.join(training_data_fd,'weights/best.pt'))
         else:
             pass
-        # except e:
-        #     print("Errors from formate training data ")
