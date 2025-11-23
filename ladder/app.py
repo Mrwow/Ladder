@@ -501,6 +501,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 flags=flags,
             )
             self.labelFile = lf
+            self._refresh_unique_label_counts()
 
             return True
         except ValueError:
@@ -614,10 +615,43 @@ class MainWindow(QtWidgets.QMainWindow):
     #     return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
 
     # Also inside your App class
-    def _refresh_unique_label_counts(self):
-        """Recompute and refresh the counts for every item in the unique label list."""
-        # Tally counts from the per-shape list
+    # def _refresh_unique_label_counts(self):
+    #     """Recompute and refresh the counts for every item in the unique label list."""
+    #     # Tally counts from the per-shape list
+    #     # self.uniqLabelList.removeAllItemLabels()
         
+    #     counts = Counter()
+    #     root = self.labelList.model().invisibleRootItem()
+    #     print(f"root is {root.rowCount()}")
+    #     for rrow in range(root.rowCount()):
+    #         it = root.child(rrow, 0)
+    #         if it is None:
+    #             continue
+    #         shape = it.data(Qt.UserRole)
+    #         lab = getattr(shape, "label", None) or it.text()
+    #         if lab:
+    #             counts[lab] += 1
+
+    #     # Update every unique item’s label text (color by its row)
+    #     for row in range(self.uniqLabelList.count()):
+    #         uitem = self.uniqLabelList.item(row)
+    #         label = uitem.data(Qt.UserRole)
+    #         r, g, b = LABEL_COLORMAP[(row + 1) % len(LABEL_COLORMAP)]
+    #         self.uniqLabelList.setItemLabel(uitem, label, (r, g, b), counts.get(label, 0))
+
+
+    def _refresh_unique_label_counts(self):
+        """Rebuild the unique-label list from the current contents of labelList.
+
+        This is called when opening a new file or after bulk edits so that:
+        - all previous unique items are removed
+        - new unique labels are discovered from the shape list
+        - each unique label shows its current count
+        """
+        # 1) Clear all previous unique items
+        self.uniqLabelList.clear()
+
+        # 2) Count labels from the label list (all shapes)
         counts = Counter()
         root = self.labelList.model().invisibleRootItem()
         for rrow in range(root.rowCount()):
@@ -629,12 +663,15 @@ class MainWindow(QtWidgets.QMainWindow):
             if lab:
                 counts[lab] += 1
 
-        # Update every unique item’s label text (color by its row)
-        for row in range(self.uniqLabelList.count()):
-            uitem = self.uniqLabelList.item(row)
-            label = uitem.data(Qt.UserRole)
-            r, g, b = LABEL_COLORMAP[(row + 1) % len(LABEL_COLORMAP)]
-            self.uniqLabelList.setItemLabel(uitem, label, (r, g, b), counts.get(label, 0))
+        # 3) Create unique items for each label and set text + color + count
+        for idx, (lab, cnt) in enumerate(sorted(counts.items())):
+            uitem = self.uniqLabelList.createItemFromLabel(lab)
+            self.uniqLabelList.addItem(uitem)
+            # pick a color for this label (keep your existing colormap logic)
+            r, g, b = LABEL_COLORMAP[(idx + 1) % len(LABEL_COLORMAP)]
+            # show:  Label (N)  ●
+            self.uniqLabelList.setItemLabel(uitem, lab, (r, g, b), cnt)
+
 
 
     def _on_unique_label_activate(self, uitem):
