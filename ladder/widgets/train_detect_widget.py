@@ -181,7 +181,7 @@ class TrainWidget(QtWidgets.QWidget):
         else:
             model = YOLO(weight_path)
 
-        results = model.train(data=data, epochs=epochs,imgsz=imgsz, project=save_dir, name="exp")
+        results = model.train(data=data, epochs=epochs,imgsz=imgsz, project=save_dir, name="exp", patience=0)
         results_out_dir = results.save_dir
         try:
             clean_weights_folder(results_out_dir)

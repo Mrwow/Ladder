@@ -35,22 +35,6 @@ class UniqueLabelQListWidget(EscapableQListWidget):
         item.setData(Qt.UserRole, label)
         return item
 
-    # def setItemLabel(self, item, label, color=None):
-    #     qlabel = QtWidgets.QLabel()
-    #     if color is None:
-    #         qlabel.setText("{}".format(label))
-    #     else:
-    #         qlabel.setText(
-    #             '{} <font color="#{:02x}{:02x}{:02x}">●</font>'.format(
-    #                 html.escape(label), *color
-    #             )
-    #         )
-    #     qlabel.setAlignment(Qt.AlignBottom)
-
-    #     item.setSizeHint(qlabel.sizeHint())
-
-    #     self.setItemWidget(item, qlabel)
-
     def setItemLabel(self, item, label, color=None, count=None):
             """
             Render a label item as:  "<label> (N)  ●"
@@ -76,4 +60,42 @@ class UniqueLabelQListWidget(EscapableQListWidget):
 
             item.setSizeHint(qlabel.sizeHint())
             self.setItemWidget(item, qlabel)
+
+    def removeItemLabel(self, label: str) -> bool:
+        """
+        Remove the unique-label list entry for `label`.
+        Returns True if an item was removed, False if not found.
+        (Does NOT modify shapes; handle that in app.py if desired.)
+        """
+        item = self.findItemByLabel(label)
+        if item is None:
+            return False
+
+        row = self.row(item)
+        # If we used setItemWidget, clean up the widget to avoid leaks
+        w = self.itemWidget(item)
+        if w is not None:
+            w.deleteLater()
+        # Remove the QListWidgetItem
+        self.takeItem(row)
+        return True
+
+
+    def removeAllItemLabels(self) -> int:
+        """
+        Remove ALL unique-label entries from the list.
+        Returns the number of items removed.
+        (Does NOT modify shapes; handle that in app.py if desired.)
+        """
+        removed = 0
+        # Iterate backwards so row indices remain valid as we remove
+        for row in reversed(range(self.count())):
+            it = self.item(row)
+            w = self.itemWidget(it)
+            if w is not None:
+                w.deleteLater()
+            self.takeItem(row)
+            removed += 1
+        return removed
+
 
