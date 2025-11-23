@@ -571,6 +571,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Returns (r, g, b).
         """
         # 1) Ensure the unique item exists (no recursion!)
+        self._refresh_unique_label_counts()
         item = self.uniqLabelList.findItemByLabel(label)
         if item is None:
             item = self.uniqLabelList.createItemFromLabel(label)
