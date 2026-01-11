@@ -88,7 +88,7 @@ class TrainWidget(QtWidgets.QWidget):
 
         self.imgSize = QtWidgets.QLineEdit()
         # self.imgSize.setPlaceholderText("Enter like: 640")
-        self.imgSize.setText("600")
+        self.imgSize.setText("608")
         self.epoch = QtWidgets.QLineEdit()
         # self.epoch.setPlaceholderText("Enter like: 100")
         self.epoch.setText("100")
@@ -233,7 +233,7 @@ class DetectWidget(QtWidgets.QWidget):
         # ])
         self.singleImg = None
         self.imgSize = QtWidgets.QLineEdit()
-        self.imgSize.setText("600")
+        self.imgSize.setText("608")
         # self.imgSize.setPlaceholderText("Enter like: 640")
         self.iou = QtWidgets.QLineEdit()
         self.iou.setText("0.6")
