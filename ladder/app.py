@@ -842,9 +842,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setDirty()
 
     def resetTrainDetectParas(self):
-        self.trainWidget.imgSize.setText("600")
+        self.trainWidget.imgSize.setText("608")
         self.trainWidget.epoch.setText("100")
-        self.detectWidget.imgSize.setText("600")
+        self.detectWidget.imgSize.setText("608")
         self.detectWidget.iou.setText("0.6")
         self.detectWidget.conf.setText("0.25")
         self.detectWidget.overlap.setText("0.25")
