@@ -23,6 +23,117 @@ LABEL_COLORMAP = imgviz.label_colormap()
 #                   [128,128,0],
 #                   [0,0,128]]
 
+
+def _safe_shape_points(shape):
+    """Return iterable of QPointF-like points for a shape, best-effort."""
+    pts = None
+    # Common patterns
+    for attr in ("points", "pts", "vertices"):
+        if hasattr(shape, attr):
+            pts = getattr(shape, attr)
+            try:
+                # some implementations use a method points()
+                if callable(pts):
+                    pts = pts()
+            except Exception:
+                pass
+            if pts:
+                return pts
+    # Fallback: dict-like
+    try:
+        if isinstance(shape, dict) and "points" in shape:
+            return shape["points"]
+    except Exception:
+        pass
+    return []
+
+
+def _shape_bbox_xywh(shape):
+    """Compute (x, y, w, h) from shape geometry, best-effort."""
+    # Preferred: boundingRect()
+    try:
+        if hasattr(shape, "boundingRect"):
+            r = shape.boundingRect()
+            return float(r.left()), float(r.top()), float(r.width()), float(r.height())
+    except Exception:
+        pass
+
+    pts = _safe_shape_points(shape)
+    xs, ys = [], []
+    for p in pts:
+        try:
+            # QPointF
+            xs.append(float(p.x()))
+            ys.append(float(p.y()))
+        except Exception:
+            # tuple/list [x,y]
+            try:
+                xs.append(float(p[0]))
+                ys.append(float(p[1]))
+            except Exception:
+                continue
+    if not xs or not ys:
+        return None, None, None, None
+    x0, x1 = min(xs), max(xs)
+    y0, y1 = min(ys), max(ys)
+    return x0, y0, (x1 - x0), (y1 - y0)
+
+
+
+
+def _shape_diag(w, h):
+    if w is None or h is None:
+        return None
+    try:
+        return round(float((w * w + h * h) ** 0.5))
+    except Exception:
+        return None
+def _shape_confidence(shape):
+    """Extract prediction confidence if present; otherwise return None."""
+    # attribute-based
+    for attr in ("confidence", "conf", "score", "prob", "probability"):
+        try:
+            if hasattr(shape, attr):
+                v = getattr(shape, attr)
+                if callable(v):
+                    v = v()
+                if v is not None:
+                    return float(v)
+        except Exception:
+            pass
+
+    # dict-like metadata
+    for key in ("confidence", "conf", "score", "prob", "probability"):
+        try:
+            if isinstance(shape, dict) and key in shape:
+                return float(shape[key])
+        except Exception:
+            pass
+
+    # Some implementations store extra data in `other_data` or similar
+    for meta_attr in ("other_data", "meta", "extra", "attributes"):
+        try:
+            if hasattr(shape, meta_attr):
+                meta = getattr(shape, meta_attr)
+                if isinstance(meta, dict):
+                    for key in ("confidence", "conf", "score", "prob", "probability"):
+                        if key in meta:
+                            return float(meta[key])
+        except Exception:
+            pass
+
+    return None
+
+
+def _format_conf(v):
+    if v is None:
+        return ""
+    try:
+        return round(float(v), 3)
+    except Exception:
+        return ""
+
+
 class struct(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -46,6 +157,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.output_file = output_file
         self.lastOpenDir = None
         self.trainFolder = None
+        self.shape_color_rgb_counter = Counter()
 
         # canvas
         self.zoomWidget = ZoomWidget()
@@ -60,32 +172,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.newShape.connect(self.newShape)
         self.canvas.labelUpdate.connect(self.labelUpdate)
+        # Update label-list metrics after geometry edits (move/resize/reshape)
+        self.canvas.shapeMoved.connect(self.shapeEdited)
         self.setCentralWidget(scrollAreaForCanvas)
         self.canvas.cropImgDig.connect(self.cropImgDig)
 
         # label dialog for label input and edit
         self.labelDialog = LabelDialog(parent=self)
         self.cropDialog = CropDialog(parent=self)
-
-        # --- Summary (left dock) ---
-        # self.summary_widget = SummaryWidget(self, title="Summary")   # optional title
-        # self.summary_widget.setMinimumWidth(260)                     # comfy default
-
-        # self.sum_dock = QtWidgets.QDockWidget(self.tr("Labels Summary"), self)
-        # self.sum_dock.setObjectName("dock_labels_summary")           # good for saving/restoring state
-        # self.sum_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-
-        # # Choose dock behavior you prefer:
-        # #  - Movable + Closable (recommended)
-        # # self.sum_dock.setFeatures(
-        # #     QtWidgets.QDockWidget.DockWidgetMovable
-        # #     | QtWidgets.QDockWidget.DockWidgetClosable
-        # # )
-        # # fixed with no close/move:
-        # self.sum_dock.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
-
-        # self.sum_dock.setWidget(self.summary_widget)
-        # self.addDockWidget(Qt.LeftDockWidgetArea, self.sum_dock)
 
         # polygon label list
         self.labelList = LabelListWidget()
@@ -255,52 +349,8 @@ class MainWindow(QtWidgets.QMainWindow):
         print(f"open img {self.filename}")
 
 
-    def openDir(self):
-        print("open dir")
-        return
-
-    def loadShapes(self, shapes, replace=True):
-        for shape in shapes:
-            self._update_shape_color(shape)
-            # add into labelDialog
-            self.labelDialog.addLabelHistory(shape.label)
-            # add into label list
-            label_list_item = LabelListWidgetItem(shape.label, shape)
-            self.labelList.addItem(label_list_item)
-        self.canvas.loadShapes(shapes, replace=replace)
-
-    def loadLabels(self, shapes):
-        s = []
-        for shape in shapes:
-            label = shape["label"]
-            points = shape["points"]
-            shape_type = shape["shape_type"]
-            flags = shape["flags"]
-            group_id = shape["group_id"]
-            other_data = shape["other_data"]
-            print(points)
-
-            if not points:
-                # skip point-empty shape
-                continue
-
-            shape = Shape(
-                label=label,
-                shape_type=shape_type,
-                group_id=group_id,
-            )
-            for x, y in points:
-                try:
-                    shape.addPoint(QtCore.QPointF(x, y))
-                except :
-                    print("find a error in json here")
-
-            shape.close()
-            s.append(shape)
-        self.loadShapes(s)
-
     def loadFile(self,filename=None):
-        print("load file to canvas")
+        print("load file to canvas++")
         self.labelList.clear()
         self.canvas.setEnabled(False)
         filename = str(filename)
@@ -325,11 +375,119 @@ class MainWindow(QtWidgets.QMainWindow):
         image = QtGui.QImage.fromData(self.imageData)
         self.canvas.pixmap = QtGui.QPixmap.fromImage(image)
         if self.labelFile:
+            # self.uniqLabelList.clear()
             self.loadLabels(self.labelFile.shapes)
         self.canvas.setEnabled(True)
         self.zoomValueInitial()
         self.canvas.update()
-        self._refresh_unique_label_counts()
+        # self._refresh_unique_label_counts()
+
+
+    def loadLabels(self, shapes):
+        self.shape_color_rgb_counter = Counter()
+        s = []
+        for shape in shapes:
+            label = shape["label"]
+            points = shape["points"]
+            shape_type = shape["shape_type"]
+            flags = shape["flags"]
+            group_id = shape["group_id"]
+            other_data = shape["other_data"]
+            # print(points)
+
+            if not points:
+                # skip point-empty shape
+                continue
+
+            shape = Shape(
+                label=label,
+                shape_type=shape_type,
+                group_id=group_id,
+            )
+            for x, y in points:
+                try:
+                    shape.addPoint(QtCore.QPointF(x, y))
+                except :
+                    print("find a error in json here")
+
+            shape.close()
+            s.append(shape)
+        self.loadShapes(s)
+
+
+    def loadShapes(self, shapes, replace=True):
+        self.labelList.clear()
+        shape_color_rgb_counter = Counter()
+        shape_label_list = []
+        for shape in shapes:
+            shape_color_rgb = self._update_shape_color(shape)
+            # add into labelDialog
+            self.labelDialog.addLabelHistory(shape.label)
+            # add into label list (multi-column, sortable)
+            x, y, w, h = _shape_bbox_xywh(shape)
+            conf = _format_conf(_shape_confidence(shape))
+            label_list_item = LabelListWidgetItem(shape.label, shape)
+            cols = [
+                QtGui.QStandardItem("" if x is None else str(int(round(x)))),
+                QtGui.QStandardItem("" if y is None else str(int(round(y)))),
+                QtGui.QStandardItem("" if w is None else str(int(round(w)))),
+                QtGui.QStandardItem("" if h is None else str(int(round(h)))),
+                QtGui.QStandardItem("" if _shape_diag(w, h) is None else str(round(_shape_diag(w, h), 3))),
+                QtGui.QStandardItem("" if conf == "" else str(conf)),
+            ]
+            # ensure numeric sorting for numeric columns
+            for it, val in zip(cols, [x, y, w, h, _shape_diag(w, h), None if conf=="" else float(conf)]):
+                it.setEditable(False)
+                if isinstance(val, (int, float)) and val is not None:
+                    it.setData(float(val), Qt.EditRole)
+            self.labelList.addItem(label_list_item, cols)
+            shape_color_rgb_counter[shape.label] = shape_color_rgb
+            shape_label_list.append(shape.label)
+
+
+        # 3) Compute the current count of this label from the shape list model
+        print(shape_color_rgb_counter)
+        shape_label_num_counter = Counter(shape_label_list)
+        print(shape_label_num_counter)
+        self.uniqLabelList.clear()
+        for key in shape_label_num_counter:
+            print(f'creat uniq label list for {key}')
+            item = self.uniqLabelList.createItemFromLabel(key)
+            self.uniqLabelList.addItem(item)
+            self.uniqLabelList.setItemLabel(item, key, shape_color_rgb_counter[key], shape_label_num_counter[key])
+
+        self.canvas.loadShapes(shapes, replace=replace)
+        self.shape_color_rgb_counter = shape_color_rgb_counter
+
+    def _update_shape_color(self, shape):
+        label = shape.label
+        print(f'update the color for the {label}')
+        if label not in self.shape_color_rgb_counter:
+            item = self.uniqLabelList.findItemByLabel(label)
+            if item is None:
+                item = self.uniqLabelList.createItemFromLabel(label)
+                self.uniqLabelList.addItem(item)
+            label_id = self.uniqLabelList.indexFromItem(item).row() + 1
+            r, g, b = LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
+            print(f"length of the LABEL_COLORMAP is {len(LABEL_COLORMAP)} when label_id is {label_id} and index is {label_id % len(LABEL_COLORMAP)}")
+            self.shape_color_rgb_counter[shape.label] = (r, g, b)
+        else:
+            print(f"shape_color_rgb_counter is {self.shape_color_rgb_counter}")
+            r, g, b = self.shape_color_rgb_counter[label]
+
+        print(f"r g b is {r}, {g}, {b} for shape {shape.label}")
+        shape.line_color = QtGui.QColor(r, g, b)
+        shape.vertex_fill_color = QtGui.QColor(r, g, b)
+        shape.hvertex_fill_color = QtGui.QColor(255, 255, 255)
+        shape.fill_color = QtGui.QColor(r, g, b, 128)
+        shape.select_line_color = QtGui.QColor(255, 255, 255)
+        shape.select_fill_color = QtGui.QColor(r, g, b, 155)
+        return (r,g,b)
+
+
+    def openDir(self):
+        print("open dir")
+        return
     #<<<<<<<<<<<<<<<<open file>>>>>>>>>>>>>>>
 
     #<<<<<<<<<<<<<<<< zoom >>>>>>>>>>>>>>>
@@ -554,93 +712,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return items[0]
         return None
 
-    def _update_shape_color(self, shape):
-        r, g, b = self._get_rgb_by_label(shape.label)
-        shape.line_color = QtGui.QColor(r, g, b)
-        shape.vertex_fill_color = QtGui.QColor(r, g, b)
-        shape.hvertex_fill_color = QtGui.QColor(255, 255, 255)
-        shape.fill_color = QtGui.QColor(r, g, b, 128)
-        shape.select_line_color = QtGui.QColor(255, 255, 255)
-        shape.select_fill_color = QtGui.QColor(r, g, b, 155)
-
-    # Put this inside your App class (replacing the existing _get_rgb_by_label)
-    def _get_rgb_by_label(self, label):
-        """
-        Ensure the unique-list item exists for `label`, compute its color from row index,
-        and ALWAYS refresh its displayed count using the current LabelListWidget contents.
-        Returns (r, g, b).
-        """
-        # 1) Ensure the unique item exists (no recursion!)
-        self._refresh_unique_label_counts()
-        item = self.uniqLabelList.findItemByLabel(label)
-        if item is None:
-            item = self.uniqLabelList.createItemFromLabel(label)
-            self.uniqLabelList.addItem(item)
-
-        # 2) Compute the color from its position
-        label_id = self.uniqLabelList.indexFromItem(item).row() + 1
-        r, g, b = LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
-
-        # 3) Compute the current count of this label from the shape list model
-        count = 0
-        root = self.labelList.model().invisibleRootItem()
-        for rrow in range(root.rowCount()):
-            it = root.child(rrow, 0)
-            if it is None:
-                continue
-            # You can also use getattr(it.shape(), "label", None) if you prefer
-            shape = it.data(Qt.UserRole)
-            lab = getattr(shape, "label", None) or it.text()
-            if lab == label:
-                count += 1
-
-        # 4) Update the unique item’s visible text with count
-        #    (setItemLabel expects (item, label, color_tuple, count))
-        self.uniqLabelList.setItemLabel(item, label, (r, g, b), count)
-
-        return (r, g, b)
-
-
-
-    # def _get_rgb_by_label(self, label):
-    #     all_items = list(self.labelList)
-    #     print(f"here is all current labels item: {all_items}") 
-    #     item = self.uniqLabelList.findItemByLabel(label)
-    #     # print(item)
-    #     if item is None:
-    #         item = self.uniqLabelList.createItemFromLabel(label)
-    #         self.uniqLabelList.addItem(item)
-    #         rgb = self._get_rgb_by_label(label)
-    #         self.uniqLabelList.setItemLabel(item, label, rgb)
-    #     label_id = self.uniqLabelList.indexFromItem(item).row() + 1
-    #     return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
-
-    # Also inside your App class
-    # def _refresh_unique_label_counts(self):
-    #     """Recompute and refresh the counts for every item in the unique label list."""
-    #     # Tally counts from the per-shape list
-    #     # self.uniqLabelList.removeAllItemLabels()
-        
-    #     counts = Counter()
-    #     root = self.labelList.model().invisibleRootItem()
-    #     print(f"root is {root.rowCount()}")
-    #     for rrow in range(root.rowCount()):
-    #         it = root.child(rrow, 0)
-    #         if it is None:
-    #             continue
-    #         shape = it.data(Qt.UserRole)
-    #         lab = getattr(shape, "label", None) or it.text()
-    #         if lab:
-    #             counts[lab] += 1
-
-    #     # Update every unique item’s label text (color by its row)
-    #     for row in range(self.uniqLabelList.count()):
-    #         uitem = self.uniqLabelList.item(row)
-    #         label = uitem.data(Qt.UserRole)
-    #         r, g, b = LABEL_COLORMAP[(row + 1) % len(LABEL_COLORMAP)]
-    #         self.uniqLabelList.setItemLabel(uitem, label, (r, g, b), counts.get(label, 0))
-
-
     def _refresh_unique_label_counts(self):
         """Rebuild the unique-label list from the current contents of labelList.
 
@@ -666,13 +737,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # 3) Create unique items for each label and set text + color + count
         for idx, (lab, cnt) in enumerate(sorted(counts.items())):
+            print(f"before refresh the unique label count, check the color counter {self.shape_color_rgb_counter}")
             uitem = self.uniqLabelList.createItemFromLabel(lab)
             self.uniqLabelList.addItem(uitem)
             # pick a color for this label (keep your existing colormap logic)
-            r, g, b = LABEL_COLORMAP[(idx + 1) % len(LABEL_COLORMAP)]
+            # r, g, b = LABEL_COLORMAP[(idx + 1) % len(LABEL_COLORMAP)]
+            color_uniq = self.shape_color_rgb_counter[lab]
             # show:  Label (N)  ●
-            self.uniqLabelList.setItemLabel(uitem, lab, (r, g, b), cnt)
-
+            self.uniqLabelList.setItemLabel(uitem, lab, color_uniq, cnt)
 
 
     def _on_unique_label_activate(self, uitem):
@@ -737,6 +809,19 @@ class MainWindow(QtWidgets.QMainWindow):
             u_old = None
 
         # 3) Recompute counts & redraw unique labels
+        if new_label not in self.shape_color_rgb_counter:
+            item = self.uniqLabelList.findItemByLabel(new_label)
+            if item is None:
+                item = self.uniqLabelList.createItemFromLabel(new_label)
+                self.uniqLabelList.addItem(item)
+            label_id = self.uniqLabelList.indexFromItem(item).row() + 1
+            r, g, b = LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
+            self.shape_color_rgb_counter[new_label] = (r, g, b)
+        else:
+            r, g, b = self.shape_color_rgb_counter[old_label]
+
+        print(f"check color before rename labels {self.shape_color_rgb_counter}")
+        self.loadShapes(self.canvas.shapes)
         self._refresh_unique_label_counts()
 
 
@@ -756,17 +841,54 @@ class MainWindow(QtWidgets.QMainWindow):
     def labelUpdate(self):
         if self.canvas.hShape.label:
             previous_label = self.canvas.hShape.label
-            print("already have a label [%s] and edit" % previous_label)
             self.labelDialog.edit.setText(previous_label)
             text, flags, group_id = self.labelDialog.popUp()
             if text:
                 self.canvas.hShape.label = text
-                print("update shape label to %s" % self.canvas.hShape.label)
+                # Update label list row immediately
+                try:
+                    item = self.labelList.findItemByShape(self.canvas.hShape)
+                    item.setText(text)
+                    x, y, w, h = _shape_bbox_xywh(self.canvas.hShape)
+                    conf = _format_conf(_shape_confidence(self.canvas.hShape))
+                    self.labelList.setRowData(item, {
+                        'x': '' if x is None else int(round(x)),
+                        'y': '' if y is None else int(round(y)),
+                        'w': '' if w is None else int(round(w)),
+                        'l': '' if h is None else int(round(h)),
+                        'diag': '' if _shape_diag(w, h) is None else float(_shape_diag(w, h)),
+                        'conf': '' if conf == '' else float(conf),
+                    })
+                except Exception:
+                    pass
                 self._update_shape_color(self.canvas.hShape)
                 self.labelDialog.addLabelHistory(self.canvas.hShape.label)
                 item = self.currentItem()
                 item.setText(self.canvas.hShape.label)
                 self._refresh_unique_label_counts()
+
+
+    def shapeEdited(self):
+        """Called after a shape geometry edit is committed on the canvas."""
+        shape = getattr(self.canvas, 'hShape', None)
+        if shape is None:
+            return
+        try:
+            item = self.labelList.findItemByShape(shape)
+        except Exception:
+            return
+
+        x, y, w, h = _shape_bbox_xywh(shape)
+        diag = _shape_diag(w, h)
+        conf = _format_conf(_shape_confidence(shape))
+        self.labelList.setRowData(item, {
+            'x': '' if x is None else int(round(x)),
+            'y': '' if y is None else int(round(y)),
+            'w': '' if w is None else int(round(w)),
+            'l': '' if h is None else int(round(h)),
+            'diag': '' if diag is None else int(round(diag)),
+            'conf': '' if conf == '' else float(conf),
+        })
 
 
     def newShape(self):
@@ -778,8 +900,23 @@ class MainWindow(QtWidgets.QMainWindow):
             shape.group_id = group_id
             self._update_shape_color(shape)
             self.labelDialog.addLabelHistory(shape.label)
+            x, y, w, h = _shape_bbox_xywh(shape)
+            conf = _format_conf(_shape_confidence(shape))
             label_list_item = LabelListWidgetItem(shape.label, shape)
-            self.labelList.addItem(label_list_item)
+            diag = _shape_diag(w, h)
+            cols = [
+                QtGui.QStandardItem("" if x is None else str(int(round(x)))),
+                QtGui.QStandardItem("" if y is None else str(int(round(y)))),
+                QtGui.QStandardItem("" if w is None else str(int(round(w)))),
+                QtGui.QStandardItem("" if h is None else str(int(round(h)))),
+                QtGui.QStandardItem("" if _shape_diag(w, h) is None else str(round(_shape_diag(w, h), 3))),
+                QtGui.QStandardItem("" if conf == "" else str(conf)),
+            ]
+            for it, val in zip(cols, [x, y, w, h, _shape_diag(w, h), None if conf=="" else float(conf)]):
+                it.setEditable(False)
+                if isinstance(val, (int, float)) and val is not None:
+                    it.setData(float(val), Qt.EditRole)
+            self.labelList.addItem(label_list_item, cols)
             print("finish new shape and label")
         else:
             print("no label, need to cancle this new shape adding")
@@ -789,6 +926,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # reset the first point
             self.canvas.current = None
             self.canvas.update()
+        self._refresh_unique_label_counts()
 
     #<<<<<<<<<<<<<<<< shape and label >>>>>>>>>>>>>>>
 
