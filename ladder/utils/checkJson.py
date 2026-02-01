@@ -68,23 +68,37 @@ def checkBoxImg(box, img):
     return new_box
 
 
-def checkBox_batch(fd):
-    for f in os.listdir(fd):
-        if f.endswith(".json") and not f.startswith("."):
-            # print(f)
-            json_url = os.path.join(fd, f)
-            with open(json_url, "r") as f_json:
-                data = json.load(f_json)
-            h = data["imageHeight"]
-            w = data["imageWidth"]
 
-            for shape in data["shapes"]:
-                box = shape["points"]
-                # print(box)
-                shape["points"] = checkBox(box=box,w=w,h=h)
-            
-            with open(json_url,'w') as outfile:
-                json.dump(data, outfile)
+def checkBox_batch(fd):
+    for fname in os.listdir(fd):
+        if not (fname.endswith(".json") and not fname.startswith(".")):
+            continue
+
+        print(fname)
+        json_url = os.path.join(fd, fname)
+
+        with open(json_url, "r") as f_json:
+            data = json.load(f_json)
+
+        h = data.get("imageHeight")
+        w = data.get("imageWidth")
+
+        new_shapes = []
+
+        for shape in data.get("shapes", []):
+            box = shape.get("points", [])
+
+            # keep only 2-point boxes
+            if len(box) == 2:
+                shape["points"] = checkBox(box=box, w=w, h=h)
+                new_shapes.append(shape)
+            # else: drop the shape entirely
+
+        data["shapes"] = new_shapes
+
+        with open(json_url, "w") as outfile:
+            json.dump(data, outfile, indent=2)
+
     return
 
 

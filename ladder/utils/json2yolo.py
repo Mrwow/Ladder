@@ -89,6 +89,7 @@ def jsonToYoloSameTrainTest(input_path):
                         label_list.append(s["label"]) if s["label"] not in label_list else label_list
                         # print(label_list)
                         label_index = label_list.index(s["label"])
+                        print(s)
                         x1,y1, x2, y2=s["points"][0][0],s["points"][0][1],s["points"][1][0],s["points"][1][1]
                         w = (x2-x1)/img_w
                         h = (y2-y1)/img_h
