@@ -610,7 +610,6 @@ class Canvas(QtWidgets.QWidget):
         if event.button() == QtCore.Qt.RightButton:
             print("edit label")
             if self.editing():
-                # self.labelUpdate.emit()
                 self.labelUpdate.emit()
                 self.update()
         elif event.button() == QtCore.Qt.LeftButton:

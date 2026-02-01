@@ -52,7 +52,7 @@ class UniqueLabelQListWidget(EscapableQListWidget):
             if color is None:
                 text = " ".join(parts)
             else:
-                r, g, b = color
+                (r, g, b) = color
                 text = " ".join(parts) + f' <font color="#{r:02x}{g:02x}{b:02x}">●</font>'
 
             qlabel.setText(text)
