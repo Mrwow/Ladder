@@ -21,17 +21,24 @@ except Exception:
     _HAS_CV2 = False
 
 # Optional Qt fallback
+# try:
+#     from PySide6.QtGui import QImageReader, QImage
+#     from PySide6.QtWidgets import QApplication
+#     _HAS_QT = True
+# except Exception:
+#     try:
+#         from PyQt6.QtGui import QImageReader, QImage
+#         from PyQt6.QtWidgets import QApplication
+#         _HAS_QT = True
+#     except Exception:
+#         _HAS_QT = False
 try:
-    from PySide6.QtGui import QImageReader, QImage
-    from PySide6.QtWidgets import QApplication
+    from qtpy.QtGui import QImageReader, QImage
+    from qtpy.QtWidgets import QApplication
     _HAS_QT = True
 except Exception:
-    try:
-        from PyQt6.QtGui import QImageReader, QImage
-        from PyQt6.QtWidgets import QApplication
-        _HAS_QT = True
-    except Exception:
-        _HAS_QT = False
+    _HAS_QT = False
+
 
 from sahi.model import AutoDetectionModel
 
