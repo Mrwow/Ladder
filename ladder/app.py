@@ -127,7 +127,7 @@ def _shape_confidence(shape):
 
 def _format_conf(v):
     if v is None:
-        return ""
+        return "1"
     try:
         return round(float(v), 3)
     except Exception:
@@ -383,6 +383,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self._refresh_unique_label_counts()
 
 
+
     def loadLabels(self, shapes):
         self.shape_color_rgb_counter = Counter()
         s = []
@@ -393,7 +394,14 @@ class MainWindow(QtWidgets.QMainWindow):
             flags = shape["flags"]
             group_id = shape["group_id"]
             other_data = shape["other_data"]
+            # score = shape["score"]
+            score = other_data.get("score")
+            print(f"get score {score} from {shape}")
             # print(points)
+            try:
+                score = float(score)
+            except (TypeError, ValueError):
+                score = 1.0
 
             if not points:
                 # skip point-empty shape
@@ -403,6 +411,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 label=label,
                 shape_type=shape_type,
                 group_id=group_id,
+                score = score
             )
             for x, y in points:
                 try:
