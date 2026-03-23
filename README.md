@@ -40,8 +40,6 @@ conda install numpy pandas matplotlib Pillow seaborn scipy
 - For GUI
 ```
 pip install qtpy==2.4.1 PyQt5==5.15.10 tqdm==4.66.4 imgviz==1.7.5 grpcio==1.64.1
-
-conda install -c conda-forge pyside2
 ```
 - For deep learning
 ```
