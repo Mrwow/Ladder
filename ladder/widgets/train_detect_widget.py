@@ -298,7 +298,7 @@ class DetectWidget(QtWidgets.QWidget):
             self,
             "Select Files or folder",
             self.path,
-            "Image (*.png *.jpg *.jpeg)"
+            "Image (*.png *.jpg *.jpeg *.bmp)"
         )
         if filenames:
             for file in filenames:
@@ -312,7 +312,7 @@ class DetectWidget(QtWidgets.QWidget):
             self,
             "Select Files or folder",
             self.path,
-            "Image (*.png *.jpg *.jpeg)"
+            "Image (*.png *.jpg *.jpeg *.bmp)"
         )
         if filenames:
             for file in filenames:

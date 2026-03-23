@@ -23,17 +23,24 @@ except Exception:
     _HAS_CV2 = False
 
 # Optional Qt fallback
+# try:
+#     from PySide6.QtGui import QImageReader, QImage
+#     from PySide6.QtWidgets import QApplication
+#     _HAS_QT = True
+# except Exception:
+#     try:
+#         from PyQt6.QtGui import QImageReader, QImage
+#         from PyQt6.QtWidgets import QApplication
+#         _HAS_QT = True
+#     except Exception:
+#         _HAS_QT = False
 try:
-    from PySide6.QtGui import QImageReader, QImage
-    from PySide6.QtWidgets import QApplication
+    from qtpy.QtGui import QImageReader, QImage
+    from qtpy.QtWidgets import QApplication
     _HAS_QT = True
 except Exception:
-    try:
-        from PyQt6.QtGui import QImageReader, QImage
-        from PyQt6.QtWidgets import QApplication
-        _HAS_QT = True
-    except Exception:
-        _HAS_QT = False
+    _HAS_QT = False
+
 
 
 def coco2json(coco,img_url):
@@ -92,7 +99,7 @@ def sliceDetectBatch(weight,img_fd,conf,iou,img_size,img_h,img_w,overlap,gpu):
     imgs = os.listdir(img_fd)
     for img in imgs:
         print(img)
-        if not img.startswith(".") and img.split(".")[1] in ['png', 'jpg', 'JPG', 'jepg', 'JEPG', 'jpeg']:
+        if not img.startswith(".") and img.split(".")[1] in ['png', 'jpg', 'JPG', 'jepg', 'JEPG', 'jpeg', 'bmp']:
             img_url = os.path.join(img_fd,img)
             sliceDetect(weight=weight,img=img_url,conf=conf,iou=iou,
                         img_size=img_size,img_h=img_h,img_w=img_w,overlap=overlap,gpu=gpu)
